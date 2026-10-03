@@ -1,0 +1,13 @@
+{
+  "name": "kisanmitra",
+  "private": true,
+  "version": "1.0.0",
+  "scripts": {
+    "backend": "node backend/src/server.js",
+    "frontend": "node frontend/node_modules/vite/bin/vite.js --host 0.0.0.0 --port 5173",
+    "dev": "node node_modules/concurrently/dist/bin/concurrently.js \"npm run backend\" \"npm run frontend\""
+  },
+  "devDependencies": {
+    "concurrently": "^9.1.2"
+  }
+}
