@@ -205,6 +205,12 @@ function AppShell({ children }) {
             }}
           >
             <NavLink to="/" className={navClass}>Home</NavLink>
+            {!user && (
+              <>
+                <NavLink to="/delivery/login" className={navClass}>Delivery Login</NavLink>
+                <NavLink to="/delivery/register" className={navClass}>Delivery Partner Register</NavLink>
+              </>
+            )}
             {user?.role === 'farmer' && (
               <>
                 <NavLink to="/farmer/dashboard" className={navClass}>Dashboard</NavLink>
@@ -292,7 +298,7 @@ function HomePage() {
       <section className="role-grid">
         <RoleCard title="Farmer" description="Discover crop solutions, order inputs, and inspect customized harvest recommendations." route="/login" icon={<Tractor size={28} />} />
         <RoleCard title="Retailer" description="List agro-chemicals, seeds, and equipment with streamlined fulfillment pipelines." route="/retailer/login" icon={<Store size={28} />} />
-        <RoleCard title="Delivery Partner" description="Pick up verified parcels and fulfill door-to-door farm dispatches." route="/delivery/login" icon={<Truck size={28} />} />
+        <RoleCard title="Delivery Partner" description="Pick up verified parcels and fulfill door-to-door farm dispatches." route="/delivery/register" icon={<Truck size={28} />} />
         <RoleCard title="Admin" description="Supervise network participants, review verifications, and audit transaction volumes." route="/admin/login" icon={<ShieldCheck size={28} />} />
       </section>
     </main>
@@ -488,6 +494,183 @@ function RoleAuthPage({ role, label }) {
           {error && <div className="feedback error">{error}</div>}
           <div className="auth-actions">
             <button className="btn btn-primary" type="submit" disabled={loading}>{loading ? 'Signing in...' : 'Sign In'}</button>
+            {role === 'delivery' && (
+              <Link className="btn btn-secondary" to="/delivery/register">Create Delivery Partner Account</Link>
+            )}
+          </div>
+        </form>
+      </div>
+    </main>
+  );
+}
+
+function DeliveryRegistrationPage() {
+  const navigate = useNavigate();
+  const [form, setForm] = useState({
+    name: '',
+    email: '',
+    mobile: '',
+    vehicleType: '',
+    vehicleRegistration: '',
+    password: '',
+    confirmPassword: ''
+  });
+  const [error, setError] = useState('');
+  const [notice, setNotice] = useState('');
+  const [loading, setLoading] = useState(false);
+
+  const change = (event) => {
+    setForm((previous) => ({ ...previous, [event.target.name]: event.target.value }));
+    setError('');
+    setNotice('');
+  };
+
+  const submit = async (event) => {
+    event.preventDefault();
+
+    if (form.password !== form.confirmPassword) {
+      setError('Passwords do not match.');
+      return;
+    }
+
+    if (form.password.length < 8) {
+      setError('Password must be at least 8 characters.');
+      return;
+    }
+
+    setLoading(true);
+    setError('');
+    setNotice('');
+
+    try {
+      const { data } = await api.post('/auth/delivery/register', form);
+
+      // Delivery partners require admin verification before they can work.
+      // Do not store the pending registration token as an active login session.
+      setNotice(
+        data.message ||
+        'Registration submitted successfully. Your account is pending admin verification.'
+      );
+      setForm({
+        name: '',
+        email: '',
+        mobile: '',
+        vehicleType: '',
+        vehicleRegistration: '',
+        password: '',
+        confirmPassword: ''
+      });
+    } catch (err) {
+      setError(err.response?.data?.message || 'Unable to register delivery partner.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <main className="page-shell auth-shell">
+      <div className="auth-card" style={{ maxWidth: 720 }}>
+        <div className="auth-header">
+          <div className="brand-badge glow"><Truck size={18} /></div>
+          <h2>Delivery Partner Registration</h2>
+          <p>Join KisanMitra and deliver agricultural products to farmers</p>
+        </div>
+
+        <form className="auth-form" onSubmit={submit}>
+          <div className="info-grid">
+            <label>
+              Full name
+              <input type="text" name="name" value={form.name} onChange={change} required />
+            </label>
+
+            <label>
+              Mobile number
+              <input
+                type="tel"
+                name="mobile"
+                value={form.mobile}
+                onChange={change}
+                inputMode="numeric"
+                maxLength={10}
+                placeholder="10-digit mobile number"
+                required
+              />
+            </label>
+
+            <label>
+              Email address
+              <input type="email" name="email" value={form.email} onChange={change} required />
+            </label>
+
+            <label>
+              Vehicle type
+              <select name="vehicleType" value={form.vehicleType} onChange={change}>
+                <option value="">Select vehicle type</option>
+                <option value="Bike">Bike</option>
+                <option value="Scooter">Scooter</option>
+                <option value="Auto">Auto</option>
+                <option value="Pickup Van">Pickup Van</option>
+                <option value="Mini Truck">Mini Truck</option>
+                <option value="Truck">Truck</option>
+              </select>
+            </label>
+
+            <label>
+              Vehicle registration number
+              <input
+                type="text"
+                name="vehicleRegistration"
+                value={form.vehicleRegistration}
+                onChange={change}
+                placeholder="MH12AB1234"
+                autoComplete="off"
+              />
+            </label>
+          </div>
+
+          <div className="info-grid">
+            <label>
+              Password
+              <input
+                type="password"
+                name="password"
+                value={form.password}
+                onChange={change}
+                minLength={8}
+                required
+              />
+            </label>
+
+            <label>
+              Confirm password
+              <input
+                type="password"
+                name="confirmPassword"
+                value={form.confirmPassword}
+                onChange={change}
+                minLength={8}
+                required
+              />
+            </label>
+          </div>
+
+          <div className="feedback" role="status">
+            <strong>Verification required:</strong> After registration, an admin must verify your delivery partner account before you can accept deliveries.
+          </div>
+
+          {error && <div className="feedback error" role="alert">{error}</div>}
+          {notice && <div className="feedback success" role="status">{notice}</div>}
+
+          <div className="auth-actions">
+            <button className="btn btn-primary" type="submit" disabled={loading}>
+              {loading ? 'Submitting...' : 'Create Delivery Account'}
+            </button>
+            <Link className="btn btn-secondary" to="/delivery/login">Already registered?</Link>
+            {notice && (
+              <button className="btn btn-secondary" type="button" onClick={() => navigate('/delivery/login')}>
+                Go to Delivery Login
+              </button>
+            )}
           </div>
         </form>
       </div>
@@ -1742,6 +1925,7 @@ export default function App() {
           <Route path="/retailer/login" element={<RoleAuthPage role="retailer" label="Retailer Login" />} />
           <Route path="/retailer/register" element={<RetailerRegistrationPage />} />
           <Route path="/delivery/login" element={<RoleAuthPage role="delivery" label="Delivery Partner Login" />} />
+          <Route path="/delivery/register" element={<DeliveryRegistrationPage />} />
           <Route path="/admin/login" element={<RoleAuthPage role="admin" label="Admin Login" />} />
 
           {/* Farmer Features */}
