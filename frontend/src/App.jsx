@@ -1,6 +1,24 @@
-import { useEffect, useMemo, useState } from 'react';
-import { BrowserRouter, Link, Navigate, Route, Routes, useLocation, useNavigate, useParams } from 'react-router-dom';
-import { ArrowLeft, ArrowRight, BadgeCheck, LogOut, MapPin, PackageCheck, Search, ShieldCheck, ShoppingCart, Sprout, Store, Tractor, Truck, UserRound, Wallet } from 'lucide-react';
+import { useEffect, useState } from 'react';
+import { BrowserRouter, Link, NavLink, Navigate, Route, Routes, useLocation, useNavigate, useParams } from 'react-router-dom';
+import {
+  ArrowRight,
+  Bell,
+  Leaf,
+  LogOut,
+  Menu,
+  PackageCheck,
+  Search,
+  ShieldCheck,
+  ShoppingCart,
+  Sparkles,
+  Sprout,
+  Store,
+  Tractor,
+  Truck,
+  User,
+  Wallet,
+  X
+} from 'lucide-react';
 import api from './api';
 import { startRazorpayPayment } from './services/paymentService';
 import RetailerDashboardPage from './retailer/pages/RetailerDashboardPage';
@@ -8,7 +26,17 @@ import RetailerProfilePage from './retailer/pages/RetailerProfilePage';
 import RetailerProductsPage from './retailer/pages/RetailerProductsPage';
 import RetailerProductFormPage from './retailer/pages/RetailerProductFormPage';
 import RetailerOrdersPage, { RetailerOrderDetailsPage } from './retailer/pages/RetailerOrdersPage';
+import {
+  AdminAccountPage,
+  AdminInventoryPage,
+  AdminOrderDetailsPage,
+  AdminOrdersPage,
+  AdminPageLayout,
+  AdminProductsPage,
+  AdminUsersPage
+} from './admin/pages/AdminManagementPages';
 
+/* ---------------- Auth & Storage Helpers ---------------- */
 const getStoredUser = () => {
   try {
     return JSON.parse(localStorage.getItem('kisanmitra_user') || 'null');
@@ -42,76 +70,177 @@ function ProtectedRoute({ children, allowedRoles = [] }) {
   return children;
 }
 
+/* ---------------- Enhanced App Shell ---------------- */
 function AppShell({ children }) {
   const user = getStoredUser();
   const navigate = useNavigate();
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [cartCount, setCartCount] = useState(0);
+  const [showNotifications, setShowNotifications] = useState(false);
+
+  useEffect(() => {
+    if (user?.role === 'farmer') {
+      api.get('/cart')
+        .then(({ data }) => {
+          const totalQty = (data?.cart?.items || []).reduce((acc, curr) => acc + (curr.quantity || 1), 0);
+          setCartCount(totalQty);
+        })
+        .catch(() => setCartCount(0));
+    }
+  }, [user?.role]);
 
   const handleLogout = () => {
     clearStoredAuth();
     navigate('/login');
   };
 
+  const navClass = ({ isActive }) => (isActive ? 'nav-link active' : 'nav-link');
+
   return (
     <div className="app-shell">
       <header className="topbar">
         <div className="brand-wrap">
-          <div className="brand-badge"><Sprout size={18} /></div>
-          <div>
-            <div className="brand-name">KisanMitra</div>
-            <div className="brand-tag">Agriculture Network</div>
-          </div>
+          <Link to="/" className="brand-logo-link">
+            <div className="brand-badge glow"><Sprout size={20} /></div>
+            <div>
+              <div className="brand-name">KisanMitra</div>
+              <div className="brand-tag">Smart Agriculture Ecosystem</div>
+            </div>
+          </Link>
         </div>
 
-        <nav className="topnav">
-          <Link to="/">Home</Link>
+        {/* Desktop Navigation */}
+        <nav className="topnav desktop-nav">
+          <NavLink to="/" className={navClass}>Home</NavLink>
           {user?.role === 'farmer' && (
             <>
-              <Link to="/farmer/dashboard">Dashboard</Link>
-              <Link to="/farmer/profile">Profile</Link>
-              <Link to="/farmer/crop">Select Crop</Link>
-              <Link to="/farmer/products">Products</Link>
-              <Link to="/farmer/recommendations">Recommendations</Link>
-              <Link to="/cart">Cart</Link>
-              <Link to="/orders">My Orders</Link>
+              <NavLink to="/farmer/dashboard" className={navClass}><Tractor size={15} /> Dashboard</NavLink>
+              <NavLink to="/farmer/crop" className={navClass}><Leaf size={15} /> Crop Care</NavLink>
+              <NavLink to="/farmer/products" className={navClass}><Store size={15} /> Catalogue</NavLink>
+              <NavLink to="/farmer/recommendations" className={navClass}><Sparkles size={15} /> AI Advice</NavLink>
+              <NavLink to="/orders" className={navClass}><PackageCheck size={15} /> My Orders</NavLink>
             </>
           )}
           {user?.role === 'retailer' && (
             <>
-              <Link to="/retailer/dashboard">Dashboard</Link>
-              <Link to="/retailer/profile">Business Profile</Link>
-              <Link to="/retailer/products">Products</Link>
-              <Link to="/retailer/products/new">Add Product</Link>
-              <Link to="/retailer/orders">Orders</Link>
+              <NavLink to="/retailer/dashboard" className={navClass}>Dashboard</NavLink>
+              <NavLink to="/retailer/products" className={navClass}>Products</NavLink>
+              <NavLink to="/retailer/products/new" className={navClass}>+ Add Product</NavLink>
+              <NavLink to="/retailer/orders" className={navClass}>Orders</NavLink>
             </>
           )}
           {user?.role === 'delivery' && (
-            <>
-              <Link to="/delivery/dashboard">Deliveries</Link>
-            </>
+            <NavLink to="/delivery/dashboard" className={navClass}><Truck size={15} /> Deliveries</NavLink>
           )}
-          {user?.role === 'admin' && <Link to="/admin/dashboard">Admin</Link>}
+          {user?.role === 'admin' && (
+            <NavLink to="/admin/dashboard" className={navClass}><ShieldCheck size={15} /> Admin</NavLink>
+          )}
         </nav>
 
+        {/* Actions */}
         <div className="user-actions">
-          {!user ? (
-            <Link className="btn btn-secondary" to="/login">Login</Link>
-          ) : (
-            <>
-              <span className="user-badge">{user.name}</span>
-              <button className="btn btn-secondary btn-small" onClick={handleLogout}><LogOut size={14} /> Logout</button>
-            </>
+          {user?.role === 'farmer' && (
+            <Link to="/cart" className="action-badge-btn" title="View Cart">
+              <ShoppingCart size={19} />
+              {cartCount > 0 && <span className="counter-pill">{cartCount}</span>}
+            </Link>
           )}
+
+          {user && (
+            <div className="relative-wrap">
+              <button
+                className="action-badge-btn"
+                onClick={() => setShowNotifications(!showNotifications)}
+                title="Notifications"
+                type="button"
+              >
+                <Bell size={19} />
+                <span className="dot-indicator" />
+              </button>
+
+              {showNotifications && (
+                <div className="dropdown-panel notification-drawer">
+                  <h4>Recent Alerts</h4>
+                  <p className="notification-empty">No new notifications.</p>
+                </div>
+              )}
+            </div>
+          )}
+
+          {!user ? (
+            <div className="guest-actions">
+              <Link className="btn btn-secondary btn-small" to="/login">Sign In</Link>
+              <Link className="btn btn-primary btn-small" to="/register">Register</Link>
+            </div>
+          ) : (
+            <div className="profile-pill">
+              <span className="user-badge"><User size={14} /> {user.name}</span>
+              <button className="btn btn-secondary btn-icon-only" onClick={handleLogout} title="Log Out" type="button">
+                <LogOut size={16} />
+              </button>
+            </div>
+          )}
+
+          <button
+            className="mobile-toggle btn-icon-only"
+            onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+            aria-label="Toggle Navigation"
+            aria-expanded={mobileMenuOpen}
+            aria-controls="mobile-navigation"
+            type="button"
+          >
+            {mobileMenuOpen ? <X size={20} /> : <Menu size={20} />}
+          </button>
         </div>
       </header>
+
+      {mobileMenuOpen && (
+        <div className="mobile-drawer" onClick={() => setMobileMenuOpen(false)}>
+          <div
+            id="mobile-navigation"
+            className="drawer-content"
+            onClick={(e) => {
+              e.stopPropagation();
+              if (e.target.closest('a')) setMobileMenuOpen(false);
+            }}
+          >
+            <NavLink to="/" className={navClass}>Home</NavLink>
+            {user?.role === 'farmer' && (
+              <>
+                <NavLink to="/farmer/dashboard" className={navClass}>Dashboard</NavLink>
+                <NavLink to="/farmer/crop" className={navClass}>Crop Care</NavLink>
+                <NavLink to="/farmer/products" className={navClass}>Products</NavLink>
+                <NavLink to="/farmer/recommendations" className={navClass}>AI Guidance</NavLink>
+                <NavLink to="/cart" className={navClass}>Cart ({cartCount})</NavLink>
+                <NavLink to="/orders" className={navClass}>My Orders</NavLink>
+              </>
+            )}
+            {user?.role === 'retailer' && (
+              <>
+                <NavLink to="/retailer/dashboard" className={navClass}>Dashboard</NavLink>
+                <NavLink to="/retailer/products" className={navClass}>Products</NavLink>
+                <NavLink to="/retailer/orders" className={navClass}>Orders</NavLink>
+              </>
+            )}
+            {user?.role === 'admin' && (
+              <NavLink to="/admin/dashboard" className={navClass}>Admin Control</NavLink>
+            )}
+          </div>
+        </div>
+      )}
+
       {children}
     </div>
   );
 }
 
-function StatCard({ label, value, tone = 'green' }) {
+function StatCard({ label, value, trend, tone = 'green' }) {
   return (
-    <div className={`stat-card tone-${tone}`}>
-      <div className="stat-label">{label}</div>
+    <div className={`stat-card tone-${tone} stat-glass`}>
+      <div className="stat-header">
+        <span className="stat-label">{label}</span>
+        {trend && <span className="stat-trend">{trend}</span>}
+      </div>
       <div className="stat-value">{value}</div>
     </div>
   );
@@ -122,38 +251,49 @@ function HomePage() {
   return (
     <main className="page-shell home-page">
       <section className="hero">
-        <div>
-          <span className="eyebrow">Smart agriculture platform</span>
-          <h1>Grow better with KisanMitra</h1>
+        <div className="hero-copy">
+          <span className="eyebrow glow-pill">🌱 Smart Agriculture & Commerce Platform</span>
+          <h1>Empowering Farmers With Intelligence & Direct Access</h1>
           <p>
-            A complete digital farming ecosystem for crop guidance, product discovery, cart and checkout,
-            retailer fulfillment, secure payments, and delivery tracking.
+            Bridging crop health diagnostics, verified retailer inventory, swift checkout,
+            and doorstep delivery tracking in a unified digital network.
           </p>
           <div className="cta-row">
             {!user ? (
               <>
-                <Link className="btn btn-primary" to="/login">Farmer Login</Link>
-                <Link className="btn btn-secondary" to="/retailer/login">Retailer Login</Link>
+                <Link className="btn btn-primary" to="/login">Farmer Portal</Link>
+                <Link className="btn btn-secondary" to="/retailer/login">Retailer Hub</Link>
               </>
             ) : (
-              <Link className="btn btn-primary" to={user.role === 'farmer' ? '/farmer/dashboard' : user.role === 'retailer' ? '/retailer/dashboard' : user.role === 'delivery' ? '/delivery/dashboard' : '/admin/dashboard'}>
-                Go to dashboard
+              <Link
+                className="btn btn-primary"
+                to={
+                  user.role === 'farmer'
+                    ? '/farmer/dashboard'
+                    : user.role === 'retailer'
+                    ? '/retailer/dashboard'
+                    : user.role === 'delivery'
+                    ? '/delivery/dashboard'
+                    : '/admin/dashboard'
+                }
+              >
+                Launch Dashboard <ArrowRight size={16} />
               </Link>
             )}
           </div>
         </div>
         <div className="hero-panel">
-          <div className="mini-card"><Sprout size={18} /> Crop intelligence</div>
-          <div className="mini-card"><Wallet size={18} /> Secure payments</div>
-          <div className="mini-card"><Truck size={18} /> Live tracking</div>
+          <div className="mini-card pulse"><Sprout size={20} /> AI Crop Intelligence</div>
+          <div className="mini-card"><Wallet size={20} /> Secure Escrow Payments</div>
+          <div className="mini-card"><Truck size={20} /> Real-Time GPS Tracking</div>
         </div>
       </section>
 
       <section className="role-grid">
-        <RoleCard title="Farmer" description="Get crop suggestions, recommendations, cart checkout, and order tracking." route="/login" icon={<Tractor size={28} />} />
-        <RoleCard title="Retailer" description="Create products, manage stock, and fulfill orders through the retail dashboard." route="/retailer/login" icon={<Store size={28} />} />
-        <RoleCard title="Delivery Partner" description="Receive orders, pick up parcels, and share live location updates." route="/delivery/login" icon={<Truck size={28} />} />
-        <RoleCard title="Admin" description="Manage farmers, retailers, products, orders, and verification queues." route="/admin/login" icon={<ShieldCheck size={28} />} />
+        <RoleCard title="Farmer" description="Discover crop solutions, order inputs, and inspect customized harvest recommendations." route="/login" icon={<Tractor size={28} />} />
+        <RoleCard title="Retailer" description="List agro-chemicals, seeds, and equipment with streamlined fulfillment pipelines." route="/retailer/login" icon={<Store size={28} />} />
+        <RoleCard title="Delivery Partner" description="Pick up verified parcels and fulfill door-to-door farm dispatches." route="/delivery/login" icon={<Truck size={28} />} />
+        <RoleCard title="Admin" description="Supervise network participants, review verifications, and audit transaction volumes." route="/admin/login" icon={<ShieldCheck size={28} />} />
       </section>
     </main>
   );
@@ -165,93 +305,12 @@ function RoleCard({ title, description, route, icon }) {
       <div className="role-icon">{icon}</div>
       <h3>{title}</h3>
       <p>{description}</p>
-      <span className="role-link">Open portal <ArrowRight size={16} /></span>
+      <span className="role-link">Enter Portal <ArrowRight size={16} /></span>
     </Link>
   );
 }
 
-function RoleAuthPage({ role, label }) {
-  const navigate = useNavigate();
-  const [form, setForm] = useState({ email: '', password: '' });
-  const [error, setError] = useState('');
-  const [loading, setLoading] = useState(false);
-
-  useEffect(() => {
-    if (getStoredUser()) {
-      const user = getStoredUser();
-      if (user.role === 'farmer') navigate('/farmer/dashboard');
-      if (user.role === 'retailer') navigate('/retailer/dashboard');
-      if (user.role === 'delivery') navigate('/delivery/dashboard');
-      if (user.role === 'admin') navigate('/admin/dashboard');
-    }
-  }, [navigate]);
-
-  const onInputChange = (event) => {
-    const { name, value } = event.target;
-    setForm((prev) => ({ ...prev, [name]: value }));
-  };
-
-  const onSubmit = async (event) => {
-    event.preventDefault();
-    setLoading(true);
-    setError('');
-
-    try {
-      const { data } = await api.post(role === 'retailer' ? '/auth/retailer/login' : '/auth/login', {
-        ...form,
-        role
-      });
-      setStoredAuth(data.user, data.token);
-      if (data.user.role === 'farmer') navigate('/farmer/dashboard');
-      if (data.user.role === 'retailer') navigate('/retailer/dashboard');
-      if (data.user.role === 'delivery') navigate('/delivery/dashboard');
-      if (data.user.role === 'admin') navigate('/admin/dashboard');
-    } catch (err) {
-      setError(err.response?.data?.message || 'Login failed. Please try again.');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  return (
-    <main className="page-shell auth-shell">
-      <div className="auth-card">
-        <div className="auth-header">
-          <div className="brand-badge"><Sprout size={18} /></div>
-          <h2>{label}</h2>
-          <p>Secure access portal</p>
-        </div>
-
-        <form className="auth-form" onSubmit={onSubmit}>
-          <label>
-            Email or Mobile
-            <input type="text" name="email" value={form.email} onChange={onInputChange} placeholder="example@kisanmitra.com" required />
-          </label>
-          <label>
-            Password
-            <input type="password" name="password" value={form.password} onChange={onInputChange} placeholder="********" required />
-          </label>
-
-          {error && <div className="feedback error">{error}</div>}
-
-          <div className="auth-actions">
-            <button className="btn btn-primary" type="submit" disabled={loading}>{loading ? 'Signing in...' : 'Login'}</button>
-          </div>
-        </form>
-
-        <div className="auth-links">
-          <Link to="/login">Farmer Login</Link>
-          <Link to="/register">Farmer Register</Link>
-          <Link to="/retailer/login">Retailer Login</Link>
-          <Link to="/retailer/register">Retailer Register</Link>
-          <Link to="/delivery/login">Delivery Login</Link>
-          <Link to="/admin/login">Admin Login</Link>
-        </div>
-      </div>
-    </main>
-  );
-}
-
+/* ---------------- Farmer Authentication ---------------- */
 function FarmerLoginPage() {
   const navigate = useNavigate();
   const [form, setForm] = useState({ email: '', password: '' });
@@ -259,27 +318,18 @@ function FarmerLoginPage() {
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    if (getStoredUser()) {
-      const user = getStoredUser();
-      if (user.role === 'farmer') navigate('/farmer/dashboard');
-    }
+    const user = getStoredUser();
+    if (user && user.role === 'farmer') navigate('/farmer/dashboard');
   }, [navigate]);
 
-  const handleChange = (event) => {
-    const { name, value } = event.target;
-    setForm((prev) => ({ ...prev, [name]: value }));
-  };
+  const handleChange = (e) => setForm((prev) => ({ ...prev, [e.target.name]: e.target.value }));
 
-  const handleSubmit = async (event) => {
-    event.preventDefault();
+  const handleSubmit = async (e) => {
+    e.preventDefault();
     setLoading(true);
     setError('');
-
     try {
-      const { data } = await api.post('/auth/login', {
-        ...form,
-        role: 'farmer'
-      });
+      const { data } = await api.post('/auth/login', { ...form, role: 'farmer' });
       setStoredAuth(data.user, data.token);
       navigate('/farmer/dashboard');
     } catch (err) {
@@ -293,24 +343,20 @@ function FarmerLoginPage() {
     <main className="page-shell auth-shell">
       <div className="auth-card">
         <div className="auth-header">
-          <div className="brand-badge"><Sprout size={18} /></div>
+          <div className="brand-badge glow"><Sprout size={18} /></div>
           <h2>Farmer Login</h2>
           <p>Welcome back to KisanMitra</p>
         </div>
-
         <form className="auth-form" onSubmit={handleSubmit}>
           <label>
             Email or Mobile
             <input type="text" name="email" value={form.email} onChange={handleChange} placeholder="farmer@example.com" required />
           </label>
-
           <label>
             Password
-            <input type="password" name="password" value={form.password} onChange={handleChange} placeholder="********" required />
+            <input type="password" name="password" value={form.password} onChange={handleChange} placeholder="••••••••" required />
           </label>
-
           {error && <div className="feedback error">{error}</div>}
-
           <div className="auth-actions">
             <button className="btn btn-primary" type="submit" disabled={loading}>{loading ? 'Signing in...' : 'Login'}</button>
             <Link className="btn btn-secondary" to="/register">Create account</Link>
@@ -324,35 +370,24 @@ function FarmerLoginPage() {
 function FarmerRegisterPage() {
   const navigate = useNavigate();
   const [form, setForm] = useState({
-    name: '',
-    email: '',
-    mobile: '',
-    password: '',
-    confirmPassword: '',
-    homeAddress: '',
-    farmAddress: '',
-    city: '',
-    state: '',
-    pincode: ''
+    name: '', email: '', mobile: '', password: '', confirmPassword: '',
+    homeAddress: '', farmAddress: '', city: '', state: '', pincode: ''
   });
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
-  const handleChange = (event) => {
-    const { name, value } = event.target;
-    setForm((prev) => ({ ...prev, [name]: value }));
-  };
+  const handleChange = (e) => setForm((prev) => ({ ...prev, [e.target.name]: e.target.value }));
 
-  const handleSubmit = async (event) => {
-    event.preventDefault();
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    if (form.password !== form.confirmPassword) {
+      setError('Passwords do not match.');
+      return;
+    }
     setLoading(true);
     setError('');
-
     try {
-      const { data } = await api.post('/auth/register', {
-        ...form,
-        role: 'farmer'
-      });
+      const { data } = await api.post('/auth/register', { ...form, role: 'farmer' });
       setStoredAuth(data.user, data.token);
       navigate('/farmer/dashboard');
     } catch (err) {
@@ -366,65 +401,29 @@ function FarmerRegisterPage() {
     <main className="page-shell auth-shell">
       <div className="auth-card" style={{ maxWidth: 720 }}>
         <div className="auth-header">
-          <div className="brand-badge"><Sprout size={18} /></div>
+          <div className="brand-badge glow"><Sprout size={18} /></div>
           <h2>Farmer Registration</h2>
-          <p>Create your account and start using KisanMitra</p>
+          <p>Create your account to start receiving intelligent crop assistance</p>
         </div>
-
         <form className="auth-form" onSubmit={handleSubmit}>
           <div className="info-grid">
-            <label>
-              Full name
-              <input type="text" name="name" value={form.name} onChange={handleChange} required />
-            </label>
-            <label>
-              Mobile
-              <input type="tel" name="mobile" value={form.mobile} onChange={handleChange} required />
-            </label>
-            <label>
-              Email
-              <input type="email" name="email" value={form.email} onChange={handleChange} required />
-            </label>
-            <label>
-              City
-              <input type="text" name="city" value={form.city} onChange={handleChange} />
-            </label>
-            <label>
-              State
-              <input type="text" name="state" value={form.state} onChange={handleChange} />
-            </label>
-            <label>
-              Pincode
-              <input type="text" name="pincode" value={form.pincode} onChange={handleChange} />
-            </label>
+            <label>Full name<input type="text" name="name" value={form.name} onChange={handleChange} required /></label>
+            <label>Mobile<input type="tel" name="mobile" value={form.mobile} onChange={handleChange} required /></label>
+            <label>Email<input type="email" name="email" value={form.email} onChange={handleChange} required /></label>
+            <label>City<input type="text" name="city" value={form.city} onChange={handleChange} /></label>
+            <label>State<input type="text" name="state" value={form.state} onChange={handleChange} /></label>
+            <label>Pincode<input type="text" name="pincode" value={form.pincode} onChange={handleChange} /></label>
           </div>
-
-          <label>
-            Home address
-            <input type="text" name="homeAddress" value={form.homeAddress} onChange={handleChange} required />
-          </label>
-
-          <label>
-            Farm address
-            <input type="text" name="farmAddress" value={form.farmAddress} onChange={handleChange} required />
-          </label>
-
+          <label>Home address<input type="text" name="homeAddress" value={form.homeAddress} onChange={handleChange} required /></label>
+          <label>Farm address<input type="text" name="farmAddress" value={form.farmAddress} onChange={handleChange} required /></label>
           <div className="info-grid">
-            <label>
-              Password
-              <input type="password" name="password" value={form.password} onChange={handleChange} required />
-            </label>
-            <label>
-              Confirm password
-              <input type="password" name="confirmPassword" value={form.confirmPassword} onChange={handleChange} required />
-            </label>
+            <label>Password<input type="password" name="password" value={form.password} onChange={handleChange} required /></label>
+            <label>Confirm password<input type="password" name="confirmPassword" value={form.confirmPassword} onChange={handleChange} required /></label>
           </div>
-
           {error && <div className="feedback error">{error}</div>}
-
           <div className="auth-actions">
-            <button className="btn btn-primary" type="submit" disabled={loading}>{loading ? 'Creating account...' : 'Create account'}</button>
-            <Link className="btn btn-secondary" to="/login">Already have an account?</Link>
+            <button className="btn btn-primary" type="submit" disabled={loading}>{loading ? 'Creating...' : 'Create account'}</button>
+            <Link className="btn btn-secondary" to="/login">Already registered?</Link>
           </div>
         </form>
       </div>
@@ -432,68 +431,174 @@ function FarmerRegisterPage() {
   );
 }
 
-function FarmerProfilePage() {
-  const [profile, setProfile] = useState(null);
-  const [form, setForm] = useState({ name: '', mobile: '', email: '', homeAddress: '', farmAddress: '', city: '', state: '', pincode: '' });
+function RoleAuthPage({ role, label }) {
+  const navigate = useNavigate();
+  const [form, setForm] = useState({ email: '', password: '' });
   const [error, setError] = useState('');
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
 
-  const fetchProfile = async () => {
+  useEffect(() => {
+    const user = getStoredUser();
+    if (user) {
+      if (user.role === 'farmer') navigate('/farmer/dashboard');
+      if (user.role === 'retailer') navigate('/retailer/dashboard');
+      if (user.role === 'delivery') navigate('/delivery/dashboard');
+      if (user.role === 'admin') navigate('/admin/dashboard');
+    }
+  }, [navigate]);
+
+  const onInputChange = (e) => setForm((prev) => ({ ...prev, [e.target.name]: e.target.value }));
+
+  const onSubmit = async (e) => {
+    e.preventDefault();
+    setLoading(true);
+    setError('');
     try {
-      const { data } = await api.get('/farmer/profile');
-      const user = data.user;
-      setProfile(user);
-      setForm({
-        name: user.name || '',
-        mobile: user.mobile || '',
-        email: user.email || '',
-        homeAddress: user.homeAddress || '',
-        farmAddress: user.farmAddress || '',
-        city: user.city || '',
-        state: user.state || '',
-        pincode: user.pincode || ''
-      });
+      const endpoint = role === 'retailer' ? '/auth/retailer/login' : '/auth/login';
+      const { data } = await api.post(endpoint, { ...form, role });
+      setStoredAuth(data.user, data.token);
+      if (data.user.role === 'farmer') navigate('/farmer/dashboard');
+      if (data.user.role === 'retailer') navigate('/retailer/dashboard');
+      if (data.user.role === 'delivery') navigate('/delivery/dashboard');
+      if (data.user.role === 'admin') navigate('/admin/dashboard');
     } catch (err) {
-      setError(err.response?.data?.message || 'Unable to load profile.');
+      setError(err.response?.data?.message || 'Login failed. Please check credentials.');
     } finally {
       setLoading(false);
     }
   };
 
-  useEffect(() => {
-    fetchProfile();
-  }, []);
+  return (
+    <main className="page-shell auth-shell">
+      <div className="auth-card">
+        <div className="auth-header">
+          <div className="brand-badge glow"><Sprout size={18} /></div>
+          <h2>{label}</h2>
+          <p>Secure Portal Authentication</p>
+        </div>
+        <form className="auth-form" onSubmit={onSubmit}>
+          <label>
+            Email or Mobile
+            <input type="text" name="email" value={form.email} onChange={onInputChange} placeholder="username@kisanmitra.com" required />
+          </label>
+          <label>
+            Password
+            <input type="password" name="password" value={form.password} onChange={onInputChange} placeholder="••••••••" required />
+          </label>
+          {error && <div className="feedback error">{error}</div>}
+          <div className="auth-actions">
+            <button className="btn btn-primary" type="submit" disabled={loading}>{loading ? 'Signing in...' : 'Sign In'}</button>
+          </div>
+        </form>
+      </div>
+    </main>
+  );
+}
 
-  const handleChange = (event) => {
-    const { name, value } = event.target;
-    setForm((prev) => ({ ...prev, [name]: value }));
+function RetailerRegistrationPage() {
+  const navigate = useNavigate();
+  const [form, setForm] = useState({ name: '', email: '', mobile: '', password: '', confirmPassword: '' });
+  const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
+
+  const change = (e) => setForm((prev) => ({ ...prev, [e.target.name]: e.target.value }));
+
+  const submit = async (e) => {
+    e.preventDefault();
+    setLoading(true);
+    setError('');
+    try {
+      const { data } = await api.post('/auth/retailer/register', form);
+      setStoredAuth(data.user, data.token);
+      navigate('/retailer/profile');
+    } catch (err) {
+      setError(err.response?.data?.message || 'Unable to register retailer account.');
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const handleSubmit = async (event) => {
-    event.preventDefault();
-    setError('');
+  return (
+    <main className="page-shell auth-shell">
+      <div className="auth-card">
+        <div className="auth-header">
+          <div className="brand-badge glow"><Store size={18} /></div>
+          <h2>Retailer Registration</h2>
+          <p>Join the KisanMitra input supplier network</p>
+        </div>
+        <form className="auth-form" onSubmit={submit}>
+          <label>Business / Owner name<input name="name" value={form.name} onChange={change} required /></label>
+          <label>Email address<input type="email" name="email" value={form.email} onChange={change} required /></label>
+          <label>Mobile number<input type="tel" name="mobile" value={form.mobile} onChange={change} required /></label>
+          <label>Password<input type="password" name="password" value={form.password} onChange={change} minLength={8} required /></label>
+          <label>Confirm password<input type="password" name="confirmPassword" value={form.confirmPassword} onChange={change} minLength={8} required /></label>
+          {error && <div className="feedback error">{error}</div>}
+          <button className="btn btn-primary" type="submit" disabled={loading}>{loading ? 'Creating...' : 'Create Account'}</button>
+        </form>
+      </div>
+    </main>
+  );
+}
 
+/* ---------------- Farmer Profile & Dashboard ---------------- */
+function FarmerProfilePage() {
+  const [profile, setProfile] = useState(null);
+  const [form, setForm] = useState({ name: '', mobile: '', email: '', homeAddress: '', farmAddress: '', city: '', state: '', pincode: '' });
+  const [error, setError] = useState('');
+  const [notice, setNotice] = useState('');
+  const [saving, setSaving] = useState(false);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    api.get('/farmer/profile')
+      .then(({ data }) => {
+        const user = data.user;
+        setProfile(user);
+        setForm({
+          name: user.name || '',
+          mobile: user.mobile || '',
+          email: user.email || '',
+          homeAddress: user.homeAddress || '',
+          farmAddress: user.farmAddress || '',
+          city: user.city || '',
+          state: user.state || '',
+          pincode: user.pincode || ''
+        });
+      })
+      .catch((err) => setError(err.response?.data?.message || 'Unable to load profile.'))
+      .finally(() => setLoading(false));
+  }, []);
+
+  const handleChange = (e) => setForm((prev) => ({ ...prev, [e.target.name]: e.target.value }));
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setError('');
+    setNotice('');
+    setSaving(true);
     try {
       const { data } = await api.put('/farmer/profile', form);
       setProfile(data.user);
       setStoredAuth(data.user, getStoredToken());
-      alert('Profile updated successfully.');
+      setNotice('Profile updated successfully.');
     } catch (err) {
       setError(err.response?.data?.message || 'Unable to update profile.');
+    } finally {
+      setSaving(false);
     }
   };
 
   if (loading) return <div className="page-shell loader">Loading profile...</div>;
+  if (!profile && error) return <main className="page-shell"><div className="feedback error" role="alert">{error}</div></main>;
 
   return (
     <main className="page-shell">
       <section className="section-header">
         <div>
-          <span className="eyebrow">Farmer profile</span>
-          <h2>{profile?.name || 'My profile'}</h2>
+          <span className="eyebrow">Settings</span>
+          <h2>Farmer Profile: {profile?.name}</h2>
         </div>
       </section>
-
       <form className="panel auth-form" onSubmit={handleSubmit}>
         <div className="info-grid">
           <label>Full name<input type="text" name="name" value={form.name} onChange={handleChange} /></label>
@@ -503,90 +608,109 @@ function FarmerProfilePage() {
           <label>State<input type="text" name="state" value={form.state} onChange={handleChange} /></label>
           <label>Pincode<input type="text" name="pincode" value={form.pincode} onChange={handleChange} /></label>
         </div>
-
         <label>Home address<input type="text" name="homeAddress" value={form.homeAddress} onChange={handleChange} /></label>
         <label>Farm address<input type="text" name="farmAddress" value={form.farmAddress} onChange={handleChange} /></label>
-
         {error && <div className="feedback error">{error}</div>}
-
-        <div className="auth-actions">
-          <button className="btn btn-primary" type="submit">Save profile</button>
-        </div>
+        {notice && <div className="feedback success" role="status">{notice}</div>}
+        <button className="btn btn-primary" type="submit" disabled={saving}>{saving ? 'Saving...' : 'Save Changes'}</button>
       </form>
     </main>
   );
 }
 
 function FarmerDashboard() {
-  const [data, setData] = useState({ user: null, crops: [], selectedCrop: 'Wheat', questions: [] });
+  const [data, setData] = useState({ user: null, selectedCrop: 'Not selected', selectedCropId: null });
+  const [orders, setOrders] = useState([]);
+  const [error, setError] = useState('');
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    api.get('/farmer/dashboard')
-      .then(({ data }) => setData(data))
-      .catch(() => setData({ user: getStoredUser(), crops: [], selectedCrop: 'Wheat', questions: [] }))
+    Promise.all([api.get('/farmer/dashboard'), api.get('/orders/my')])
+      .then(([dashboardResponse, orderResponse]) => {
+        setData(dashboardResponse.data);
+        setOrders(orderResponse.data.orders || []);
+      })
+      .catch((err) => setError(err.response?.data?.message || 'Unable to load your farm dashboard.'))
       .finally(() => setLoading(false));
   }, []);
 
-  if (loading) return <div className="page-shell loader">Loading dashboard...</div>;
+  if (loading) return <div className="page-shell loader">Loading farm cockpit...</div>;
+
+  const activeOrders = orders.filter((order) => !['DELIVERED', 'CANCELLED'].includes(order.orderStatus));
+  const latestOrder = orders[0];
 
   return (
-    <main className="page-shell">
+    <main className="page-shell farmer-dashboard-page">
       <section className="section-header">
         <div>
-          <span className="eyebrow">Farmer workspace</span>
-          <h2>Welcome, {data.user?.name || 'Farmer'}</h2>
+          <span className="eyebrow">Farmer Cockpit</span>
+          <h2>Welcome back, {data.user?.name || 'Farmer'}</h2>
+          <p className="section-description">Your crop selection, assessments, and order activity in one place.</p>
         </div>
         <div className="auth-actions">
-          <Link className="btn btn-primary" to="/farmer/crop">Select crop</Link>
-          <Link className="btn btn-secondary" to="/farmer/profile">Edit profile</Link>
+          <Link className="btn btn-primary" to="/farmer/crop"><Leaf size={16} /> Switch Crop</Link>
+          <Link className="btn btn-secondary" to="/farmer/profile"><User size={16} /> Profile</Link>
         </div>
       </section>
 
-      <div className="stats-grid">
-        <StatCard label="Selected crop" value={data.selectedCrop} />
-        <StatCard label="Orders" value="3" />
-        <StatCard label="Active order" value="1" />
-        <StatCard label="Delivery status" value="In transit" tone="amber" />
-      </div>
+      {error && <div className="feedback error" role="alert">{error}</div>}
 
-      <section className="panel">
-        <h3>Profile summary</h3>
-        <div className="info-grid">
-          <div><strong>Name</strong><span>{data.user?.name || '—'}</span></div>
-          <div><strong>Email</strong><span>{data.user?.email || '—'}</span></div>
-          <div><strong>Phone</strong><span>{data.user?.mobile || '—'}</span></div>
-          <div><strong>Farm address</strong><span>{data.user?.farmAddress || '—'}</span></div>
-        </div>
-      </section>
-
-      <section className="panel-grid dashboard-grid">
-        <div className="panel card-tall">
-          <h3>Crop assessment</h3>
-          <p>{data.selectedCropId ? `Continue the ${data.selectedCrop} questionnaire or choose a different crop.` : 'Choose a crop to start a crop-specific farming questionnaire.'}</p>
-          <Link className="btn btn-primary dashboard-assessment-link" to={data.selectedCropId ? `/farmer/questions/${data.selectedCropId}` : '/farmer/crop'}>
-            {data.selectedCropId ? 'Continue questionnaire' : 'Choose a crop'}
-          </Link>
-        </div>
-
-        <div className="panel card-tall">
-          <h3>My farm status</h3>
-          <div className="badge-list">
-            <span className="pill green">Soil healthy</span>
-            <span className="pill blue">Irrigation monitored</span>
-            <span className="pill amber">Weather alert</span>
+      {!error && (
+        <>
+          <div className="stats-grid">
+            <StatCard label="Current Crop" value={data.selectedCrop} trend="Selected crop" />
+            <StatCard label="Active Orders" value={activeOrders.length} trend="From your orders" tone="blue" />
+            <StatCard label="Latest Order" value={latestOrder?.orderStatus || 'None yet'} trend={latestOrder?.orderNumber || 'No orders yet'} tone="amber" />
+            <StatCard label="Farm Assessment" value={data.selectedCropId ? 'Available' : 'Not started'} trend={data.selectedCropId ? 'Review your answers' : 'Choose a crop to begin'} tone="green" />
           </div>
-          <ul className="simple-list">
-            <li>Rain interval: 4 days</li>
-            <li>Soil moisture: 58%</li>
-            <li>Best fertilizer window: This week</li>
-          </ul>
-        </div>
-      </section>
+
+          <div className="quick-actions-bar panel">
+            <Link to="/farmer/crop" className="quick-action-btn"><Leaf size={18} /><span>Crop Choice</span></Link>
+            <Link to="/farmer/recommendations" className="quick-action-btn"><Sparkles size={18} /><span>AI Solutions</span></Link>
+            <Link to="/farmer/products" className="quick-action-btn"><Store size={18} /><span>Agro Store</span></Link>
+            <Link to="/orders" className="quick-action-btn"><Truck size={18} /><span>Deliveries</span></Link>
+          </div>
+
+          <div className="dashboard-grid-split">
+            <div className="panel card-tall">
+              <span className="eyebrow">Crop Assessment</span>
+              <h3>{data.selectedCrop === 'Not selected' ? 'Start with your crop' : `${data.selectedCrop} assessment`}</h3>
+              <p className="mt-sm">
+                {data.selectedCropId
+                  ? `Update your survey responses for ${data.selectedCrop} to refine custom fertilizing schedules.`
+                  : 'Select your crop to trigger intelligent agrochemical recommendations.'}
+              </p>
+              <div className="mt-md">
+                <Link
+                  className="btn btn-primary"
+                  to={data.selectedCropId ? `/farmer/questions/${data.selectedCropId}` : '/farmer/crop'}
+                >
+                  {data.selectedCropId ? 'Resume Questionnaire' : 'Select Crop'}
+                </Link>
+              </div>
+            </div>
+            <div className="panel card-tall">
+              <span className="eyebrow">Recent Activity</span>
+              <h3>{latestOrder ? latestOrder.orderNumber : 'No orders yet'}</h3>
+              <p className="mt-sm">
+                {latestOrder
+                  ? `Payment: ${latestOrder.paymentStatus || 'Pending'} · Delivery: ${latestOrder.deliveryStatus || latestOrder.orderStatus}`
+                  : 'Your order updates will appear here after checkout.'}
+              </p>
+              {latestOrder && (
+                <div className="mt-md">
+                  <Link className="btn btn-secondary" to={`/orders/${latestOrder.id || latestOrder._id}`}>View order</Link>
+                </div>
+              )}
+            </div>
+          </div>
+        </>
+      )}
     </main>
   );
 }
 
+/* ---------------- Crop Selection & Questionnaire ---------------- */
 function CropSelectionPage() {
   const [crops, setCrops] = useState([]);
   const [search, setSearch] = useState('');
@@ -621,20 +745,20 @@ function CropSelectionPage() {
     <main className="page-shell">
       <section className="section-header centered">
         <div>
-          <span className="eyebrow">Crop intelligence</span>
-          <h2>Select your crop</h2>
-          <p className="section-description">Choose a crop to open its farming questionnaire.</p>
+          <span className="eyebrow">Crop Intelligence</span>
+          <h2>Select Your Target Crop</h2>
+          <p className="section-description">Choose a crop to unlock diagnostic guidance and fertilizer matching.</p>
         </div>
       </section>
 
       <label className="crop-search">
         <Search size={18} aria-hidden="true" />
-        <input type="search" value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Search crops" aria-label="Search crops" />
+        <input type="search" value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search crops (Wheat, Paddy, Cotton...)" />
       </label>
 
-      {error && <div className="feedback error" role="alert">{error}</div>}
+      {error && <div className="feedback error">{error}</div>}
       {loading ? <div className="loader">Loading crops...</div> : visibleCrops.length === 0 ? (
-        <div className="panel empty-state">{search ? 'No crops match your search.' : 'No active crops are available yet.'}</div>
+        <div className="panel empty-state">No crops found matching your criteria.</div>
       ) : (
         <div className="card-grid crop-grid">
           {visibleCrops.map((crop) => (
@@ -645,7 +769,7 @@ function CropSelectionPage() {
                 <h3>{crop.name}</h3>
                 <p>{crop.description}</p>
                 <button className="btn btn-primary" disabled={Boolean(selectingCropId)} onClick={() => selectCrop(crop)}>
-                  {selectingCropId === crop._id ? 'Opening...' : 'Choose crop'}
+                  {selectingCropId === crop._id ? 'Selecting...' : 'Choose Crop'}
                 </button>
               </div>
             </article>
@@ -677,14 +801,14 @@ function FarmerQuestionnairePage() {
         if (!active) return;
         setCrop(questionResponse.data.crop);
         setQuestions(questionResponse.data.questions || []);
-        const savedAnswers = answerResponse.data.submission?.answers || [];
-        setAnswers(savedAnswers.reduce((result, entry) => {
-          result[entry.questionId] = entry.answer;
-          return result;
+        const saved = answerResponse.data.submission?.answers || [];
+        setAnswers(saved.reduce((res, entry) => {
+          res[entry.questionId] = entry.answer;
+          return res;
         }, {}));
       })
       .catch((err) => {
-        if (active) setError(err.response?.data?.message || 'Unable to load this crop questionnaire.');
+        if (active) setError(err.response?.data?.message || 'Unable to load questionnaire.');
       })
       .finally(() => {
         if (active) setLoading(false);
@@ -694,173 +818,167 @@ function FarmerQuestionnairePage() {
   }, [cropId]);
 
   const question = questions[currentIndex];
-  const answerIsPresent = (answer) => Array.isArray(answer)
-    ? answer.length > 0
-    : typeof answer === 'string'
-      ? answer.trim().length > 0
-      : answer !== undefined && answer !== null;
-
+  const currentAnswer = question ? answers[question._id] : undefined;
+  const hasCurrentAnswer = Array.isArray(currentAnswer)
+    ? currentAnswer.length > 0
+    : currentAnswer !== undefined && currentAnswer !== null && String(currentAnswer).trim() !== '';
   const setAnswer = (questionId, value) => {
-    setAnswers((previous) => ({ ...previous, [questionId]: value }));
+    setAnswers((prev) => ({ ...prev, [questionId]: value }));
     setError('');
-  };
-
-  const changeCheckbox = (questionId, option, checked) => {
-    const selected = Array.isArray(answers[questionId]) ? answers[questionId] : [];
-    setAnswer(questionId, checked ? [...selected, option] : selected.filter((value) => value !== option));
-  };
-
-  const goNext = () => {
-    if (question?.required && !answerIsPresent(answers[question._id])) {
-      setError('Please answer this required question before continuing.');
-      return;
-    }
-    setError('');
-    setCurrentIndex((index) => Math.min(index + 1, questions.length - 1));
   };
 
   const submitAnswers = async () => {
-    const missingIndex = questions.findIndex((item) => item.required && !answerIsPresent(answers[item._id]));
-    if (missingIndex !== -1) {
-      setCurrentIndex(missingIndex);
-      setError('Please answer all required questions before submitting.');
-      return;
-    }
-
-    setSubmitting(true);
     setError('');
+    setSubmitting(true);
     try {
-      const answerList = Object.entries(answers)
-        .filter(([, answer]) => answerIsPresent(answer))
-        .map(([questionId, answer]) => ({ questionId, answer }));
+      const answerList = Object.entries(answers).map(([questionId, answer]) => ({ questionId, answer }));
       await api.post('/questions/answers', { cropId, answers: answerList });
       setSubmitted(true);
     } catch (err) {
-      setError(err.response?.data?.message || 'Unable to save your answers.');
+      setError(err.response?.data?.message || 'Failed to submit answers.');
     } finally {
       setSubmitting(false);
     }
   };
 
-  const renderQuestionControl = () => {
-    if (!question) return null;
-    const value = answers[question._id];
-    if (question.questionType === 'text') {
-      return <textarea value={value || ''} onChange={(event) => setAnswer(question._id, event.target.value)} required={question.required} rows={4} />;
-    }
-    if (question.questionType === 'number') {
-      return <input type="number" value={value ?? ''} onChange={(event) => setAnswer(question._id, event.target.value === '' ? '' : Number(event.target.value))} required={question.required} />;
-    }
-    if (question.questionType === 'select') {
-      return (
-        <select value={value || ''} onChange={(event) => setAnswer(question._id, event.target.value)} required={question.required}>
-          <option value="">Choose an answer</option>
-          {(question.options || []).map((option) => <option key={option} value={option}>{option}</option>)}
-        </select>
-      );
-    }
-    if (question.questionType === 'checkbox') {
-      return <div className="question-options">{(question.options || []).map((option) => (
-        <label className="question-choice" key={option}>
-          <input type="checkbox" checked={(value || []).includes(option)} onChange={(event) => changeCheckbox(question._id, option, event.target.checked)} />
-          <span>{option}</span>
-        </label>
-      ))}</div>;
-    }
-
-    const options = question.questionType === 'yes/no' ? ['Yes', 'No'] : (question.options || []);
-    return <div className="question-options">{options.map((option) => {
-      const optionValue = question.questionType === 'yes/no' ? option === 'Yes' : option;
-      return (
-        <label className="question-choice" key={option}>
-          <input
-            type="radio"
-            name={question._id}
-            checked={value === optionValue}
-            onChange={() => setAnswer(question._id, optionValue)}
-            required={question.required && value === undefined}
-          />
-          <span>{option}</span>
-        </label>
-      );
-    })}</div>;
-  };
-
-  if (loading) return <div className="page-shell loader">Loading questionnaire...</div>;
-  if (error && !crop) return <main className="page-shell"><div className="feedback error" role="alert">{error}</div><Link className="btn btn-secondary" to="/farmer/crop">Back to crops</Link></main>;
-
+  if (loading) return <div className="page-shell loader">Loading questions...</div>;
   if (submitted) {
     return (
-      <main className="page-shell questionnaire-shell">
+      <main className="page-shell">
         <section className="panel questionnaire-success">
-          <span className="eyebrow">Questionnaire saved</span>
-          <h2>{crop?.name} answers are ready for analysis</h2>
-          <p>Your responses are saved to your farmer account and can now be used to match products for this crop.</p>
-          <div className="auth-actions">
-            <Link className="btn btn-primary" to="/farmer/recommendations">View recommendations</Link>
-            <Link className="btn btn-secondary" to="/farmer/dashboard">Return to dashboard</Link>
-          </div>
+          <h2>Answers Recorded!</h2>
+          <p>We've calibrated recommendations specifically for your {crop?.name} farm.</p>
+          <Link className="btn btn-primary" to="/farmer/recommendations">View AI Recommendations</Link>
         </section>
       </main>
     );
   }
 
   return (
-    <main className="page-shell questionnaire-shell">
-      <section className="section-header questionnaire-heading">
+    <main className="page-shell">
+      <section className="section-header">
         <div>
-          <span className="eyebrow">Crop assessment</span>
-          <h2>{crop?.name || 'Questionnaire'}</h2>
-          <p className="section-description">{crop?.description}</p>
+          <span className="eyebrow">Survey</span>
+          <h2>{crop?.name} Soil & Farm Questions</h2>
         </div>
-        <Link className="btn btn-secondary" to="/farmer/crop"><ArrowLeft size={16} /> Change crop</Link>
       </section>
-
-      {questions.length === 0 ? (
-        <section className="panel empty-state">No active questions are available for this crop yet.</section>
-      ) : (
-        <section className="panel questionnaire-panel">
-          <div className="questionnaire-progress">
+      {error && <div className="feedback error" role="alert">{error}</div>}
+      {questions.length === 0 && !error ? (
+        <div className="panel empty-state">No questions found for this crop.</div>
+      ) : questions.length > 0 ? (
+        <div className="panel questionnaire-panel">
+          <div className="questionnaire-progress" aria-live="polite">
             <span>Question {currentIndex + 1} of {questions.length}</span>
-            <div className="progress-track" role="progressbar" aria-valuenow={currentIndex + 1} aria-valuemin={1} aria-valuemax={questions.length}>
+            <div className="progress-track" role="progressbar" aria-valuemin="0" aria-valuemax={questions.length} aria-valuenow={currentIndex + 1}>
               <span style={{ width: `${((currentIndex + 1) / questions.length) * 100}%` }} />
             </div>
           </div>
-
-          {question && (
-            <div className="question-card questionnaire-card">
-              {question.category && <span className="question-category">{question.category}</span>}
-              <h3>{question.questionText}{question.required && <span className="required-mark" aria-label="required"> *</span>}</h3>
-              {renderQuestionControl()}
-            </div>
-          )}
-
-          {error && <div className="feedback error" role="alert">{error}</div>}
-
-          <div className="questionnaire-actions">
-            <button className="btn btn-secondary" type="button" onClick={() => { setError(''); setCurrentIndex((index) => Math.max(index - 1, 0)); }} disabled={currentIndex === 0}>
-              <ArrowLeft size={16} /> Previous
+          <div className="questionnaire-card">
+            {question?.category && <span className="question-category">{question.category}</span>}
+            <h3>{question?.questionText} {question?.required && <span className="required-mark" aria-label="required">*</span>}</h3>
+            {question?.questionType === 'select' ? (
+              <select
+                value={currentAnswer || ''}
+                onChange={(event) => setAnswer(question._id, event.target.value)}
+                required={question.required}
+              >
+                <option value="">Choose an answer</option>
+                {(question.options || []).map((option) => <option key={option} value={option}>{option}</option>)}
+              </select>
+            ) : question?.questionType === 'radio' || question?.questionType === 'yes/no' ? (
+              <div className="question-options">
+                {(question.questionType === 'yes/no' ? ['yes', 'no'] : question.options || []).map((option) => (
+                  <label className="question-choice" key={option}>
+                    <input
+                      type="radio"
+                      name={question._id}
+                      value={option}
+                      checked={currentAnswer === option}
+                      onChange={() => setAnswer(question._id, option)}
+                    />
+                    <span>{option === 'yes' ? 'Yes' : option === 'no' ? 'No' : option}</span>
+                  </label>
+                ))}
+              </div>
+            ) : question?.questionType === 'checkbox' ? (
+              <div className="question-options">
+                {(question.options || []).map((option) => {
+                  const checked = Array.isArray(currentAnswer) && currentAnswer.includes(option);
+                  return (
+                    <label className="question-choice" key={option}>
+                      <input
+                        type="checkbox"
+                        checked={checked}
+                        onChange={(event) => {
+                          const current = Array.isArray(currentAnswer) ? currentAnswer : [];
+                          setAnswer(question._id, event.target.checked
+                            ? [...current, option]
+                            : current.filter((value) => value !== option));
+                        }}
+                      />
+                      <span>{option}</span>
+                    </label>
+                  );
+                })}
+              </div>
+            ) : (
+              <input
+                type={question?.questionType === 'number' ? 'number' : 'text'}
+                className="mt-sm"
+                value={currentAnswer ?? ''}
+                onChange={(event) => setAnswer(
+                  question._id,
+                  question.questionType === 'number'
+                    ? (event.target.value === '' ? '' : Number(event.target.value))
+                    : event.target.value
+                )}
+                placeholder={question?.questionType === 'number' ? 'Enter a number' : 'Type your answer here...'}
+                required={question?.required}
+              />
+            )}
+          </div>
+          <div className="action-row mt-md">
+            <button
+              className="btn btn-secondary"
+              type="button"
+              disabled={currentIndex === 0}
+              onClick={() => setCurrentIndex((idx) => Math.max(0, idx - 1))}
+            >
+              Previous
             </button>
             {currentIndex < questions.length - 1 ? (
-              <button className="btn btn-primary" type="button" onClick={goNext}>Next question <ArrowRight size={16} /></button>
+              <button
+                className="btn btn-primary"
+                type="button"
+                onClick={() => {
+                  if (question.required && !hasCurrentAnswer) {
+                    setError('Please answer this required question before continuing.');
+                    return;
+                  }
+                  setCurrentIndex((idx) => idx + 1);
+                  setError('');
+                }}
+              >
+                Next
+              </button>
             ) : (
               <button className="btn btn-primary" type="button" onClick={submitAnswers} disabled={submitting}>
-                {submitting ? 'Saving answers...' : 'Submit questionnaire'}
+                {submitting ? 'Submitting...' : 'Complete Questionnaire'}
               </button>
             )}
           </div>
-        </section>
-      )}
+        </div>
+      ) : null}
     </main>
   );
 }
 
+/* ---------------- Products, Cart & Details ---------------- */
 function ProductCard({ product }) {
-  const cropNames = (product.applicableCrops || []).map((crop) => crop.name).filter(Boolean);
-
+  const image = product.images?.[0] || product.image;
   return (
     <article className="product-card">
-      {product.images?.[0] && <img src={product.images[0]} alt={product.name} loading="lazy" />}
+      {image ? <img src={image} alt={product.name} loading="lazy" /> : <div className="product-image-placeholder">Product image unavailable</div>}
       <div className="product-body">
         <div className="product-card-meta">
           <span>{product.category}</span>
@@ -870,21 +988,12 @@ function ProductCard({ product }) {
         </div>
         <h3>{product.name}</h3>
         <p>{product.description}</p>
-        <div className="product-facts">
-          {cropNames.length > 0 && <span>For {cropNames.join(', ')}</span>}
-          {product.retailer?.businessName && <span>{product.retailer.businessName}</span>}
-        </div>
-        {product.recommendationReason && <p className="recommendation-reason">{product.recommendationReason}</p>}
         <div className="price-row">
           <strong>₹{Number(product.price).toLocaleString('en-IN')}</strong>
-          <span>per {product.unit || 'unit'}</span>
+          <span>per {product.unit || 'pack'}</span>
         </div>
-        <Link
-          className="btn btn-secondary product-detail-link"
-          to={`/products/${product.id}`}
-          state={product.recommendationReason ? { recommendationReason: product.recommendationReason } : undefined}
-        >
-          View details
+        <Link className="btn btn-secondary product-detail-link" to={`/products/${product.id || product._id}`}>
+          View Details
         </Link>
       </div>
     </article>
@@ -893,211 +1002,97 @@ function ProductCard({ product }) {
 
 function FarmerProductsPage() {
   const [products, setProducts] = useState([]);
-  const [crops, setCrops] = useState([]);
-  const [categories, setCategories] = useState([]);
-  const [filters, setFilters] = useState({ search: '', crop: '', category: '', minPrice: '', maxPrice: '', availability: '' });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
   useEffect(() => {
-    let active = true;
-    Promise.all([api.get('/crops'), api.get('/categories')])
-      .then(([cropResponse, categoryResponse]) => {
-        if (!active) return;
-        setCrops(cropResponse.data.crops || []);
-        setCategories(categoryResponse.data.categories || []);
-      })
-      .catch((err) => { if (active) setError(err.response?.data?.message || 'Unable to load product filters.'); });
-    return () => { active = false; };
+    api.get('/products')
+      .then(({ data }) => setProducts(data.products || []))
+      .catch((err) => setError(err.response?.data?.message || 'Unable to load products.'))
+      .finally(() => setLoading(false));
   }, []);
-
-  useEffect(() => {
-    let active = true;
-    const timer = setTimeout(() => {
-      setLoading(true);
-      setError('');
-      const params = Object.fromEntries(Object.entries(filters).filter(([, value]) => value !== ''));
-      api.get('/products', { params })
-        .then(({ data }) => { if (active) setProducts(data.products || []); })
-        .catch((err) => { if (active) setError(err.response?.data?.message || 'Unable to load products.'); })
-        .finally(() => { if (active) setLoading(false); });
-    }, filters.search ? 250 : 0);
-
-    return () => { active = false; clearTimeout(timer); };
-  }, [filters]);
-
-  const updateFilter = (event) => {
-    const { name, value } = event.target;
-    setFilters((previous) => ({ ...previous, [name]: value }));
-  };
 
   return (
     <main className="page-shell">
       <section className="section-header">
         <div>
-          <span className="eyebrow">Farmer catalogue</span>
-          <h2>Products for your farm</h2>
+          <span className="eyebrow">Catalogue</span>
+          <h2>Agricultural Inputs</h2>
         </div>
       </section>
-
-      <section className="catalog-toolbar" aria-label="Product filters">
-        <label className="catalog-search"><Search size={17} aria-hidden="true" /><input name="search" value={filters.search} onChange={updateFilter} placeholder="Search products, crops or tags" aria-label="Search products" /></label>
-        <label><span>Crop</span><select name="crop" value={filters.crop} onChange={updateFilter}><option value="">All crops</option>{crops.map((crop) => <option value={crop._id} key={crop._id}>{crop.name}</option>)}</select></label>
-        <label><span>Category</span><select name="category" value={filters.category} onChange={updateFilter}><option value="">All categories</option>{categories.map((category) => <option value={category._id} key={category._id}>{category.name}</option>)}</select></label>
-        <label><span>Min price</span><input type="number" name="minPrice" min="0" value={filters.minPrice} onChange={updateFilter} placeholder="₹0" /></label>
-        <label><span>Max price</span><input type="number" name="maxPrice" min="0" value={filters.maxPrice} onChange={updateFilter} placeholder="No limit" /></label>
-        <label><span>Availability</span><select name="availability" value={filters.availability} onChange={updateFilter}><option value="">All stock</option><option value="available">In stock</option><option value="unavailable">Out of stock</option></select></label>
-      </section>
-
       {error && <div className="feedback error" role="alert">{error}</div>}
-      {loading ? <div className="loader">Loading products...</div> : products.length === 0 ? (
-        <div className="panel empty-state">No products match these filters.</div>
-      ) : (
-        <div className="card-grid product-grid">{products.map((product) => <ProductCard product={product} key={product.id} />)}</div>
-      )}
-    </main>
-  );
-}
-
-function RecommendationsPage() {
-  const [cropId, setCropId] = useState('');
-  const [data, setData] = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
-
-  useEffect(() => {
-    let active = true;
-    const loadRecommendations = async () => {
-      try {
-        const { data: profileData } = await api.get('/farmer/profile');
-        const selectedCropId = profileData.user.selectedCropId?.toString();
-        if (!selectedCropId) {
-          if (active) setData({ recommendations: [], message: 'Select a crop and complete its questionnaire first.' });
-          return;
-        }
-        const { data: recommendationData } = await api.get(`/recommendations/${selectedCropId}`);
-        if (active) {
-          setCropId(selectedCropId);
-          setData(recommendationData);
-        }
-      } catch (err) {
-        if (active) setError(err.response?.data?.message || 'Unable to load recommendations.');
-      } finally {
-        if (active) setLoading(false);
-      }
-    };
-    loadRecommendations();
-    return () => { active = false; };
-  }, []);
-
-  if (loading) return <div className="page-shell loader">Analyzing your crop answers...</div>;
-  const emptyTitle = data?.answerSummary
-    ? 'No matching products are currently available.'
-    : data?.message?.startsWith('Complete')
-      ? 'Questionnaire answers needed'
-      : 'Select a crop to continue';
-
-  return (
-    <main className="page-shell">
-      <section className="section-header">
-        <div>
-          <span className="eyebrow">Based on your farm answers</span>
-          <h2>{data?.crop?.name ? `${data.crop.name} recommendations` : 'Recommended products'}</h2>
+      {loading ? <div className="loader">Loading products...</div> : !error && products.length ? (
+        <div className="card-grid product-grid">
+          {products.map((p) => <ProductCard product={p} key={p.id || p._id} />)}
         </div>
-        {cropId && <Link className="btn btn-secondary" to={`/farmer/questions/${cropId}`}>Review answers</Link>}
-      </section>
-
-      {error && <div className="feedback error" role="alert">{error}</div>}
-      {data?.answerSummary && (
-        <section className="panel answer-summary">
-          <h3>Questionnaire summary</h3>
-          <p>{data.answerSummary.answeredCount} answers analyzed</p>
-          <div className="answer-summary-grid">
-            {Object.entries(data.answerSummary.farmingConditions || {}).map(([category, values]) => (
-              <div key={category}><strong>{category}</strong><span>{values.join(', ')}</span></div>
-            ))}
-          </div>
-        </section>
-      )}
-
-      {!error && (data?.recommendations || []).length === 0 ? (
-        <div className="panel empty-state recommendation-empty">
-          <h3>{emptyTitle}</h3>
-          <p>{data?.message || 'Try the product catalogue or update your questionnaire answers.'}</p>
-          <Link className="btn btn-secondary" to="/farmer/products">Browse all products</Link>
-        </div>
-      ) : (
-        <div className="card-grid product-grid">{(data?.recommendations || []).map((product) => <ProductCard product={product} key={product.id} />)}</div>
-      )}
+      ) : !error ? <div className="panel empty-state">No products are available right now.</div> : null}
     </main>
   );
 }
 
 function ProductDetailPage() {
   const { id } = useParams();
-  const location = useLocation();
   const navigate = useNavigate();
   const [product, setProduct] = useState(null);
-  const [loading, setLoading] = useState(true);
+  const [quantity, setQuantity] = useState(1);
+  const [adding, setAdding] = useState(false);
   const [error, setError] = useState('');
-  const [cartError, setCartError] = useState('');
-  const [addingToCart, setAddingToCart] = useState(false);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    let active = true;
     api.get(`/products/${id}`)
-      .then(({ data }) => { if (active) setProduct(data.product); })
-      .catch((err) => { if (active) setError(err.response?.data?.message || 'Unable to load product details.'); })
-      .finally(() => { if (active) setLoading(false); });
-    return () => { active = false; };
+      .then(({ data }) => setProduct(data.product))
+      .catch((err) => setError(err.response?.data?.message || 'Unable to load product details.'))
+      .finally(() => setLoading(false));
   }, [id]);
 
-  if (loading) return <div className="page-shell loader">Loading product details...</div>;
-  if (error || !product) return <main className="page-shell"><div className="feedback error" role="alert">{error || 'Product not found.'}</div><Link className="btn btn-secondary" to="/farmer/products">Back to products</Link></main>;
-
-  const cropNames = (product.applicableCrops || []).map((crop) => crop.name).filter(Boolean);
-  const addToCart = async () => {
-    setAddingToCart(true);
-    setCartError('');
+  const addToCart = async (goToCheckout = false) => {
+    setAdding(true);
+    setError('');
     try {
-      await api.post('/cart/add', { productId: product.id, quantity: 1 });
-      navigate('/cart');
+      await api.post('/cart/add', { productId: product.id || product._id, quantity });
+      navigate(goToCheckout ? '/checkout' : '/cart');
     } catch (err) {
-      setCartError(err.response?.data?.message || 'Unable to add this product to your cart.');
+      setError(err.response?.data?.message || 'Unable to add this product to your cart.');
     } finally {
-      setAddingToCart(false);
+      setAdding(false);
     }
   };
 
+  if (loading) return <div className="page-shell loader">Loading details...</div>;
+  if (!product) return <div className="page-shell"><div className="feedback error" role="alert">{error || 'Product not found.'}</div></div>;
+
   return (
     <main className="page-shell product-detail-page">
-      <section className="section-header">
-        <div><span className="eyebrow">{product.category}</span><h2>{product.name}</h2></div>
-        <Link className="btn btn-secondary" to="/farmer/products">Back to products</Link>
-      </section>
       <div className="detail-layout">
         <div className="detail-gallery">
-          {(product.images || []).map((image, index) => <img className="detail-image" src={image} alt={`${product.name} ${index + 1}`} key={image} />)}
+          {product.images?.[0]
+            ? <img className="detail-image" src={product.images[0]} alt={product.name} />
+            : <div className="detail-image image-empty-state">No product image available</div>}
         </div>
         <div className="detail-content">
-          <span className={`availability ${product.stock > 0 ? 'in-stock' : 'out-of-stock'}`}>{product.stock > 0 ? `${product.stock} ${product.unit || 'units'} available` : 'Out of stock'}</span>
+          <span className="eyebrow">{product.category || 'Farm input'}</span>
+          <h2>{product.name}</h2>
           <p>{product.description}</p>
-          <div className="price-box">₹{Number(product.price).toLocaleString('en-IN')} <small>per {product.unit || 'unit'}</small></div>
-          {location.state?.recommendationReason && <p className="recommendation-reason">{location.state.recommendationReason}</p>}
-          <div className="meta-grid">
-            <div><strong>Applicable crops</strong><span>{cropNames.join(', ') || 'Not specified'}</span></div>
-            <div><strong>Brand</strong><span>{product.brand || 'Not specified'}</span></div>
-            <div><strong>Usage</strong><span>{product.usage || 'See product label'}</span></div>
-            <div><strong>Retailer</strong><span>{product.retailer?.businessName || product.retailer?.name || 'Not listed'}</span></div>
-            {product.retailer?.businessCategory && <div><strong>Retailer type</strong><span>{product.retailer.businessCategory}</span></div>}
-            {(product.retailer?.city || product.retailer?.state) && <div><strong>Location</strong><span>{[product.retailer.city, product.retailer.state].filter(Boolean).join(', ')}</span></div>}
+          <div className="price-box">₹{Number(product.price).toLocaleString('en-IN')} <small>/ {product.unit || 'unit'}</small></div>
+          <div className={`availability ${product.stock > 0 ? 'in-stock' : 'out-of-stock'}`}>
+            {product.stock > 0 ? `${product.stock} in stock` : 'Out of stock'}
           </div>
-          {product.benefits?.length > 0 && <div className="product-benefits"><h3>Benefits</h3><ul>{product.benefits.map((benefit) => <li key={benefit}>{benefit}</li>)}</ul></div>}
-          {product.tags?.length > 0 && <div className="product-tags">{product.tags.map((tag) => <span key={tag}>{tag}</span>)}</div>}
-          {cartError && <div className="feedback error" role="alert">{cartError}</div>}
-          <button className="btn btn-primary" type="button" onClick={addToCart} disabled={addingToCart || product.stock <= 0}>
-            {addingToCart ? 'Adding...' : 'Add to Cart'}
-          </button>
+          {product.retailerName && <p className="product-seller">Sold by {product.retailerName}</p>}
+          <div className="quantity-row" aria-label="Product quantity">
+            <button type="button" aria-label="Decrease quantity" disabled={quantity <= 1} onClick={() => setQuantity((value) => Math.max(1, value - 1))}>−</button>
+            <span>{quantity}</span>
+            <button type="button" aria-label="Increase quantity" disabled={quantity >= product.stock} onClick={() => setQuantity((value) => Math.min(product.stock, value + 1))}>+</button>
+          </div>
+          {error && <div className="feedback error mt-md" role="alert">{error}</div>}
+          <div className="detail-actions">
+            <button className="btn btn-primary" onClick={() => addToCart()} disabled={adding || product.stock < 1}>
+              {adding ? 'Adding...' : 'Add to Cart'}
+            </button>
+            <button className="btn btn-secondary" onClick={() => addToCart(true)} disabled={adding || product.stock < 1}>
+              Buy Now
+            </button>
+          </div>
         </div>
       </div>
     </main>
@@ -1106,260 +1101,324 @@ function ProductDetailPage() {
 
 function CartPage() {
   const [cart, setCart] = useState({ items: [] });
-
-  const fetchCart = () => {
-    api.get('/cart').then(({ data }) => setCart(data.cart || { items: [] })).catch(() => setCart({ items: [] }));
-  };
-
+  const [loading, setLoading] = useState(true);
+  const [updatingId, setUpdatingId] = useState('');
+  const [error, setError] = useState('');
   useEffect(() => {
-    fetchCart();
+    api.get('/cart')
+      .then(({ data }) => setCart(data.cart || { items: [] }))
+      .catch((err) => setError(err.response?.data?.message || 'Unable to load your cart.'))
+      .finally(() => setLoading(false));
   }, []);
 
-  const total = cart.items.reduce((sum, item) => sum + Number(item.product?.price || 0) * Number(item.quantity || 0), 0);
-
-  const updateQuantity = async (productId, quantity) => {
-    await api.patch('/cart/update', { productId, quantity });
-    fetchCart();
+  const total = (cart.items || []).reduce((sum, item) => sum + Number(item.product?.price || 0) * Number(item.quantity || 0), 0);
+  const updateQuantity = async (item, quantity) => {
+    setUpdatingId(item.productId);
+    setError('');
+    try {
+      const { data } = await api.patch('/cart/update', { productId: item.productId, quantity });
+      setCart(data.cart || { items: [] });
+    } catch (err) {
+      setError(err.response?.data?.message || 'Unable to update your cart.');
+    } finally {
+      setUpdatingId('');
+    }
   };
-
   const removeItem = async (productId) => {
-    await api.delete(`/cart/${productId}`);
-    fetchCart();
+    setUpdatingId(productId);
+    setError('');
+    try {
+      const { data } = await api.delete(`/cart/${productId}`);
+      setCart(data.cart || { items: [] });
+    } catch (err) {
+      setError(err.response?.data?.message || 'Unable to remove this item.');
+    } finally {
+      setUpdatingId('');
+    }
   };
 
   return (
     <main className="page-shell">
       <section className="section-header">
-        <div>
-          <span className="eyebrow">Cart</span>
-          <h2>Your selected products</h2>
-        </div>
-        <Link className="btn btn-primary" to="/checkout">Proceed to checkout</Link>
+        <div><span className="eyebrow">Your basket</span><h2>My Cart</h2></div>
+        <Link className="btn btn-secondary" to="/farmer/products">Continue shopping</Link>
       </section>
-
-      <div className="cart-layout">
+      {error && <div className="feedback error" role="alert">{error}</div>}
+      {loading ? <div className="loader">Loading your cart...</div> : !error && (
+      <div className="cart-layout mt-md">
         <div className="panel list-stack">
-          {cart.items.length === 0 ? <p>No products in your cart.</p> : cart.items.map((item) => (
+          {(!cart.items || cart.items.length === 0) ? <div className="empty-state">Your cart is empty.</div> : cart.items.map((item) => (
             <div key={item.productId} className="cart-item">
-              <div>
-                <strong>{item.product?.name}</strong>
-                <p>₹{item.product?.price} each</p>
+              {item.product?.image && <img className="cart-product-image" src={item.product.image} alt="" />}
+              <div className="cart-product-info">
+                <strong>{item.product?.name || 'Unavailable product'}</strong>
+                <p>₹{Number(item.product?.price || 0).toLocaleString('en-IN')} / {item.product?.unit || 'unit'}</p>
+                {item.product?.stock === 0 && <span className="availability out-of-stock">Out of stock</span>}
               </div>
               <div className="cart-controls">
-                <button onClick={() => updateQuantity(item.productId, Math.max(1, item.quantity - 1))}>-</button>
-                <span>{item.quantity}</span>
-                <button onClick={() => updateQuantity(item.productId, item.quantity + 1)}>+</button>
+                <button type="button" aria-label={`Decrease quantity of ${item.product?.name || 'unavailable product'}`} disabled={!item.product || updatingId === item.productId || item.quantity <= 1} onClick={() => updateQuantity(item, item.quantity - 1)}>−</button>
+                <span>Qty: {item.quantity}</span>
+                <button type="button" aria-label={`Increase quantity of ${item.product?.name || 'unavailable product'}`} disabled={!item.product || updatingId === item.productId || item.quantity >= item.product.stock} onClick={() => updateQuantity(item, item.quantity + 1)}>+</button>
+                <button type="button" className="btn btn-secondary btn-small" disabled={updatingId === item.productId} onClick={() => removeItem(item.productId)}>
+                  {updatingId === item.productId ? 'Updating...' : 'Remove'}
+                </button>
               </div>
-              <button className="btn btn-secondary btn-small" onClick={() => removeItem(item.productId)}>Remove</button>
             </div>
           ))}
         </div>
-
-        <aside className="panel summary-panel">
-          <h3>Order summary</h3>
-          <div className="summary-line"><span>Subtotal</span><strong>₹{total}</strong></div>
-          <div className="summary-line"><span>Delivery</span><strong>₹120</strong></div>
-          <div className="summary-line total"><span>Total</span><strong>₹{total + 120}</strong></div>
-          <Link className="btn btn-primary full-width" to="/checkout">Checkout</Link>
-        </aside>
+        <div className="panel">
+          <h3>Order Summary</h3>
+          <div className="summary-line"><span>Subtotal</span><strong>₹{total.toLocaleString('en-IN')}</strong></div>
+          <div className="summary-line total"><span>Items subtotal</span><strong>₹{total.toLocaleString('en-IN')}</strong></div>
+          <p className="checkout-note">Delivery charges are added when your order is created.</p>
+          {cart.items.length
+            ? <Link className="btn btn-primary full-width mt-md" to="/checkout">Proceed to Checkout</Link>
+            : <button className="btn btn-primary full-width mt-md" type="button" disabled>Proceed to Checkout</button>}
+        </div>
       </div>
+      )}
     </main>
   );
 }
 
 function CheckoutPage() {
   const navigate = useNavigate();
+  const [address, setAddress] = useState('');
   const [cart, setCart] = useState({ items: [] });
-  const [farmer, setFarmer] = useState(getStoredUser());
-  const [deliveryAddress, setDeliveryAddress] = useState('');
-  const [farmAddress, setFarmAddress] = useState('');
-  const [order, setOrder] = useState(null);
   const [loading, setLoading] = useState(false);
-  const [pageLoading, setPageLoading] = useState(true);
+  const [loadingCart, setLoadingCart] = useState(true);
   const [error, setError] = useState('');
-  const [checkoutKey] = useState(() => {
-    const existingKey = sessionStorage.getItem('kisanmitra_checkout_key');
-    if (existingKey) return existingKey;
-    const newKey = window.crypto?.randomUUID?.() || `checkout-${Date.now()}-${Math.random().toString(16).slice(2)}`;
-    sessionStorage.setItem('kisanmitra_checkout_key', newKey);
-    return newKey;
-  });
+  const [checkoutKey] = useState(() => window.crypto?.randomUUID?.() || `checkout-${Date.now()}-${Math.random().toString(16).slice(2)}`);
+  const [pendingOrderId, setPendingOrderId] = useState('');
 
   useEffect(() => {
-    let active = true;
-    const pendingOrderId = sessionStorage.getItem('kisanmitra_pending_order');
-    Promise.all([
-      api.get('/cart'),
-      api.get('/farmer/profile'),
-      pendingOrderId ? api.get(`/orders/${pendingOrderId}`).catch(() => null) : Promise.resolve(null)
-    ])
-      .then(([cartResponse, profileResponse, orderResponse]) => {
-        if (!active) return;
-        const profile = profileResponse.data.user;
+    Promise.all([api.get('/cart'), api.get('/farmer/profile')])
+      .then(([cartResponse, profileResponse]) => {
         setCart(cartResponse.data.cart || { items: [] });
-        setFarmer(profile);
-        setDeliveryAddress(profile.homeAddress || '');
-        setFarmAddress(profile.farmAddress || '');
-        if (orderResponse?.data.order) setOrder(orderResponse.data.order);
+        const user = profileResponse.data.user;
+        setAddress(user?.homeAddress || user?.farmAddress || '');
       })
-      .catch((err) => { if (active) setError(err.response?.data?.message || 'Unable to load checkout.'); })
-      .finally(() => { if (active) setPageLoading(false); });
-    return () => { active = false; };
+      .catch((err) => setError(err.response?.data?.message || 'Unable to load checkout information.'))
+      .finally(() => setLoadingCart(false));
   }, []);
 
-  const subtotal = cart.items.reduce((sum, item) => sum + Number(item.product?.price || 0) * Number(item.quantity || 0), 0);
-  const displayedTotal = order?.amount ?? subtotal + 120;
-
-  const handlePayment = async () => {
+  const handlePay = async () => {
     setLoading(true);
     setError('');
     try {
-      let activeOrder = order;
-      if (!activeOrder) {
-        const { data } = await api.post('/orders/create', { checkoutKey, deliveryAddress, farmAddress });
-        activeOrder = data.order;
-        setOrder(activeOrder);
-        sessionStorage.setItem('kisanmitra_pending_order', activeOrder.id);
+      let orderId = pendingOrderId;
+      if (!orderId) {
+        const { data } = await api.post('/orders/create', { deliveryAddress: address, checkoutKey });
+        orderId = data.order.id;
+        setPendingOrderId(orderId);
       }
-      if (activeOrder.paymentStatus === 'PAID') {
-        navigate(`/payments/result/${activeOrder.id}`);
-        return;
-      }
-      await startRazorpayPayment(activeOrder.id);
-      navigate(`/payments/result/${activeOrder.id}`);
+      const paymentResult = await startRazorpayPayment(orderId);
+      navigate(`/payments/result/${orderId}`, { state: { paymentStatus: paymentResult.status } });
     } catch (err) {
-      const savedOrderId = order?.id || sessionStorage.getItem('kisanmitra_pending_order');
-      if (savedOrderId) {
-        try {
-          const { data } = await api.get(`/orders/${savedOrderId}`);
-          setOrder(data.order);
-        } catch {
-          // Preserve the initiating error if status refresh is unavailable.
-        }
-      }
-      setError(err.response?.data?.message || err.message || 'Unable to start payment. Your order remains unpaid.');
+      setError(err.response?.data?.message || err.message || 'Unable to start checkout. Please try again.');
     } finally {
       setLoading(false);
     }
   };
 
-  if (pageLoading) return <div className="page-shell loader">Loading checkout...</div>;
+  const subtotal = cart.items.reduce((sum, item) => sum + Number(item.product?.price || 0) * Number(item.quantity || 0), 0);
+
+  return (
+    <main className="page-shell checkout-page">
+      <section className="section-header"><div><span className="eyebrow">Secure checkout</span><h2>Delivery & Payment</h2></div></section>
+      {error && <div className="feedback error" role="alert">{error}</div>}
+      {loadingCart ? <div className="loader">Loading checkout...</div> : (
+        <div className="checkout-layout">
+          <div className="panel">
+            <h3>Delivery address</h3>
+            <label className="checkout-address">
+              Address
+              <textarea value={address} onChange={(event) => setAddress(event.target.value)} rows={4} placeholder="Enter your complete farm or delivery address" required disabled={Boolean(pendingOrderId)} />
+            </label>
+            {pendingOrderId && <p className="checkout-note">An unpaid order already exists for this checkout. Its delivery address is locked while payment is retried.</p>}
+            <div className="payment-method-card">
+              <ShieldCheck size={18} />
+              <div><strong>Razorpay secure payment</strong><span>Test mode checkout</span></div>
+            </div>
+          </div>
+          <aside className="panel checkout-summary">
+            <h3>Order summary</h3>
+            {cart.items.length === 0 ? <p className="empty-state">Your cart is empty.</p> : (
+              <div className="checkout-items">
+                {cart.items.map((item) => (
+                  <div className="summary-line" key={item.productId}>
+                    <span>{item.product?.name || 'Product'} × {item.quantity}</span>
+                    <strong>₹{(Number(item.product?.price || 0) * item.quantity).toLocaleString('en-IN')}</strong>
+                  </div>
+                ))}
+              </div>
+            )}
+            <div className="summary-line"><span>Subtotal</span><strong>₹{subtotal.toLocaleString('en-IN')}</strong></div>
+            <p className="checkout-note">Delivery fee and final payable amount are calculated securely when the order is created.</p>
+            <button className="btn btn-primary full-width mt-md" onClick={handlePay} disabled={loading || loadingCart || !cart.items.length || !address.trim()}>
+              {loading ? 'Processing...' : 'Continue to secure payment'}
+            </button>
+            <p className="checkout-note">Your payment is verified by the backend. No payment secret is stored in this page.</p>
+          </aside>
+        </div>
+      )}
+    </main>
+  );
+}
+
+function RecommendationsPage() {
+  const [data, setData] = useState({ recommendations: [] });
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+  useEffect(() => {
+    api.get('/farmer/profile')
+      .then(({ data: profileData }) => {
+        const cId = profileData.user?.selectedCropId;
+        if (cId) return api.get(`/recommendations/${cId}`);
+        return { data: { recommendations: [] } };
+      })
+      .then(({ data: recData }) => setData(recData || { recommendations: [] }))
+      .catch((err) => setError(err.response?.data?.message || 'Unable to load recommendations.'))
+      .finally(() => setLoading(false));
+  }, []);
 
   return (
     <main className="page-shell">
       <section className="section-header">
-        <div>
-          <span className="eyebrow">Checkout</span>
-          <h2>Review and pay</h2>
-        </div>
+        <div><span className="eyebrow">Crop-specific inputs</span><h2>Recommended for You</h2></div>
+        <Link className="btn btn-secondary" to="/farmer/crop">Change crop</Link>
       </section>
-
-      <div className="checkout-layout">
-        <div className="panel">
-          <h3>Customer information</h3>
-          <div className="info-grid">
-            <div><strong>Name</strong><span>{farmer?.name || 'Farmer'}</span></div>
-            <div><strong>Mobile</strong><span>{farmer?.mobile || 'Not provided'}</span></div>
-            <div><strong>Email</strong><span>{farmer?.email || 'Not provided'}</span></div>
-          </div>
-          <label className="checkout-address">Delivery address<input value={deliveryAddress} onChange={(event) => setDeliveryAddress(event.target.value)} required /></label>
-          <label className="checkout-address">Farm address<input value={farmAddress} onChange={(event) => setFarmAddress(event.target.value)} /></label>
-        </div>
-
-        <div className="panel">
-          <h3>Order summary</h3>
-          {cart.items.map((item) => (
-            <div key={item.productId} className="summary-line">
-              <span>{item.product?.name} × {item.quantity}</span>
-              <strong>₹{(item.product?.price || 0) * item.quantity}</strong>
-            </div>
-          ))}
-          <div className="summary-line"><span>Delivery</span><strong>₹{order?.deliveryFee ?? 120}</strong></div>
-          <div className="summary-line total"><span>Total</span><strong>₹{displayedTotal}</strong></div>
-          {order && <div className="summary-line"><span>Order</span><strong>{order.orderNumber}</strong></div>}
-        </div>
-      </div>
-
       {error && <div className="feedback error" role="alert">{error}</div>}
-      {!order && cart.items.length === 0 && <div className="feedback error">Your cart is empty.</div>}
-      <div className="action-row">
-        <button className="btn btn-primary" onClick={handlePayment} disabled={loading || (!order && cart.items.length === 0) || !deliveryAddress.trim()}>
-          {loading ? 'Opening secure checkout...' : order ? (order.paymentStatus === 'FAILED' ? 'Retry Payment' : 'Pay Now') : 'Create Order and Pay'}
-        </button>
-      </div>
+      {loading ? <div className="loader">Loading recommendations...</div> : error ? null : (data.recommendations || []).length ? (
+        <div className="card-grid product-grid mt-md">
+          {data.recommendations.map((prod) => <ProductCard product={prod} key={prod.id || prod._id} />)}
+        </div>
+      ) : (
+        <div className="panel recommendation-empty">
+          <h3>No recommendations yet</h3>
+          <p>Select a crop and complete its questionnaire to receive product recommendations.</p>
+          <Link className="btn btn-primary mt-md" to="/farmer/crop">Choose a crop</Link>
+        </div>
+      )}
     </main>
   );
 }
 
 function OrdersPage() {
   const [orders, setOrders] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
   useEffect(() => {
-    api.get('/orders/my').then(({ data }) => setOrders(data.orders || [])).catch(() => setOrders([]));
+    api.get('/orders/my')
+      .then(({ data }) => setOrders(data.orders || []))
+      .catch((err) => setError(err.response?.data?.message || 'Unable to load your orders.'))
+      .finally(() => setLoading(false));
   }, []);
 
   return (
     <main className="page-shell">
-      <section className="section-header">
-        <div>
-          <span className="eyebrow">Orders</span>
-          <h2>My orders</h2>
+      <section className="section-header"><div><span className="eyebrow">Purchases</span><h2>My Orders</h2></div></section>
+      {error && <div className="feedback error" role="alert">{error}</div>}
+      {loading ? <div className="loader">Loading your orders...</div> : error ? null : orders.length ? (
+        <div className="list-stack mt-md">
+          {orders.map((order) => (
+            <article key={order.id || order._id} className="panel order-row">
+              <div className="order-row-main">
+                <strong>{order.orderNumber || order.id}</strong>
+                <p>{order.createdAt ? new Date(order.createdAt).toLocaleDateString('en-IN') : 'Date unavailable'} · {order.items?.length || 0} items</p>
+              </div>
+              <span className="pill green">{order.orderStatus || 'Status unavailable'}</span>
+              <span className="order-payment-status">Payment: {order.paymentStatus || 'Unknown'}</span>
+              <strong>₹{Number(order.amount || 0).toLocaleString('en-IN')}</strong>
+              <Link className="btn btn-secondary btn-small" to={`/orders/${order.id || order._id}`}>View Details</Link>
+            </article>
+          ))}
         </div>
-      </section>
-      <div className="list-stack">
-        {orders.length === 0 ? <div className="panel">No orders found.</div> : orders.map((order) => (
-          <div className="panel order-row" key={order.id}>
-            <div>
-              <strong>{order.id}</strong>
-              <p>{order.deliveryAddress}</p>
-            </div>
-            <div className="order-status-stack">
-              <span className="pill blue">{order.orderStatus}</span>
-              <span className={`pill ${order.paymentStatus === 'PAID' ? 'green' : 'amber'}`}>{order.paymentStatus}</span>
-            </div>
-            <Link className="btn btn-secondary btn-small" to={`/orders/${order.id}`}>View</Link>
-          </div>
-        ))}
-      </div>
+      ) : <div className="panel empty-state">You have no orders yet.</div>}
     </main>
   );
 }
 
 function OrderDetailPage() {
   const { id } = useParams();
+  const navigate = useNavigate();
   const [order, setOrder] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [paying, setPaying] = useState(false);
   const [error, setError] = useState('');
 
   useEffect(() => {
-    api.get(`/orders/${id}`).then(({ data }) => setOrder(data.order)).catch((err) => setError(err.response?.data?.message || 'Unable to load order.'));
+    api.get(`/orders/${id}`)
+      .then(({ data }) => setOrder(data.order))
+      .catch((err) => setError(err.response?.data?.message || 'Unable to load order details.'))
+      .finally(() => setLoading(false));
   }, [id]);
 
-  if (!order && !error) return <div className="page-shell loader">Loading order details...</div>;
-  if (error) return <main className="page-shell"><div className="feedback error" role="alert">{error}</div><Link className="btn btn-secondary" to="/orders">Back to orders</Link></main>;
+  const retryPayment = async () => {
+    setPaying(true);
+    setError('');
+    try {
+      const result = await startRazorpayPayment(order.id || order.orderNumber);
+      navigate(`/payments/result/${encodeURIComponent(order.id || order.orderNumber)}`, { state: { paymentStatus: result.status } });
+    } catch (err) {
+      setError(err.response?.data?.message || err.message || 'Unable to retry payment.');
+    } finally {
+      setPaying(false);
+    }
+  };
+
+  if (loading) return <div className="page-shell loader">Loading order...</div>;
+  if (!order) return <main className="page-shell"><div className="feedback error" role="alert">{error || 'Order not found.'}</div></main>;
 
   return (
-    <main className="page-shell">
+    <main className="page-shell order-detail-page">
       <section className="section-header">
-        <div>
-          <span className="eyebrow">Order</span>
-          <h2>{order.id}</h2>
-        </div>
+        <div><span className="eyebrow">Order details</span><h2>{order.orderNumber || order.id}</h2></div>
+        <Link className="btn btn-secondary" to="/orders">Back to orders</Link>
       </section>
-      <div className="panel">
-        <div className="info-grid">
-          <div><strong>Status</strong><span>{order.orderStatus}</span></div>
-          <div><strong>Payment</strong><span>{order.paymentStatus}</span></div>
-          <div><strong>Retailer</strong><span>{order.retailerName}</span></div>
-          <div><strong>Delivery</strong><span>{order.deliveryStatus}</span></div>
-          <div><strong>Payment ID</strong><span>{order.paymentId || 'Not paid'}</span></div>
-          <div><strong>Payment amount</strong><span>₹{Number(order.amount).toLocaleString('en-IN')}</span></div>
-          <div><strong>Payment date</strong><span>{order.paidAt ? new Date(order.paidAt).toLocaleString() : 'Not paid'}</span></div>
-          <div><strong>Payment method</strong><span>{order.paymentMethod || 'Not paid'}</span></div>
-        </div>
-        {order.paymentStatus !== 'PAID' && order.orderStatus !== 'CANCELLED' && (
-          <Link className="btn btn-primary order-pay-link" to={`/payments/result/${order.id}`}>
-            {order.paymentStatus === 'FAILED' ? 'Retry Payment' : 'Pay Now'}
-          </Link>
-        )}
+      <div className="order-detail-grid">
+        <section className="panel">
+          <h3>Items</h3>
+          <div className="list-stack">
+            {(order.items || []).map((item) => (
+              <div className="order-item" key={item.productId || item.name}>
+                {item.image && <img src={item.image} alt="" />}
+                <div><strong>{item.productName || item.name}</strong><p>Sold by {order.retailerName || 'Retailer'} · Qty {item.quantity}</p></div>
+                <strong>₹{(Number(item.price || 0) * Number(item.quantity || 0)).toLocaleString('en-IN')}</strong>
+              </div>
+            ))}
+          </div>
+          <div className="summary-line"><span>Delivery fee</span><strong>₹{Number(order.deliveryFee || 0).toLocaleString('en-IN')}</strong></div>
+          <div className="summary-line total"><span>Total</span><strong>₹{Number(order.amount || 0).toLocaleString('en-IN')}</strong></div>
+        </section>
+        <aside className="panel">
+          <h3>Delivery & payment</h3>
+          <div className="info-grid">
+            <div><span>Order status</span><strong>{order.orderStatus || 'Unknown'}</strong></div>
+            <div><span>Delivery status</span><strong>{order.deliveryStatus || 'Unknown'}</strong></div>
+            <div><span>Payment status</span><strong>{order.paymentStatus || 'Unknown'}</strong></div>
+            <div><span>Payment method</span><strong>{order.paymentMethod || 'Razorpay'}</strong></div>
+            <div><span>Order date</span><strong>{order.createdAt ? new Date(order.createdAt).toLocaleString('en-IN') : 'Unavailable'}</strong></div>
+          </div>
+          <div className="order-address"><strong>Delivery address</strong><p>{order.deliveryAddress || 'No delivery address recorded.'}</p></div>
+          {error && <div className="feedback error" role="alert">{error}</div>}
+          {order.paymentStatus !== 'PAID' && order.orderStatus !== 'CANCELLED' && (
+            <button className="btn btn-primary" type="button" onClick={retryPayment} disabled={paying}>
+              {paying ? 'Opening secure checkout...' : 'Retry payment'}
+            </button>
+          )}
+          {order.statusHistory?.length > 0 && (
+            <div className="retailer-order-timeline">
+              <h3>Order updates</h3>
+              <ol>{order.statusHistory.map((entry, index) => (
+                <li key={`${entry.status}-${entry.updatedAt || index}`}>
+                  <strong>{entry.status}</strong>
+                  {(entry.timestamp || entry.updatedAt) && <span>{new Date(entry.timestamp || entry.updatedAt).toLocaleString('en-IN')}</span>}
+                </li>
+              ))}</ol>
+            </div>
+          )}
+        </aside>
       </div>
     </main>
   );
@@ -1367,188 +1426,314 @@ function OrderDetailPage() {
 
 function PaymentResultPage() {
   const { orderId } = useParams();
-  const [data, setData] = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [checking, setChecking] = useState(false);
+  const location = useLocation();
+  const [order, setOrder] = useState(null);
   const [error, setError] = useState('');
+  const [loading, setLoading] = useState(true);
 
-  const loadStatus = async () => {
-    setError('');
-    try {
-      const { data: paymentData } = await api.get(`/payments/order/${orderId}`);
-      setData(paymentData);
-      if (paymentData.order.paymentStatus === 'PAID') {
-        sessionStorage.removeItem('kisanmitra_pending_order');
-        sessionStorage.removeItem('kisanmitra_checkout_key');
-      }
-    } catch (err) {
-      setError(err.response?.data?.message || 'Unable to load payment status.');
-    } finally {
-      setLoading(false);
-      setChecking(false);
-    }
-  };
+  useEffect(() => {
+    api.get(`/orders/${orderId}`)
+      .then(({ data }) => setOrder(data.order))
+      .catch((err) => setError(err.response?.data?.message || 'Unable to verify the latest order status.'))
+      .finally(() => setLoading(false));
+  }, [orderId]);
 
-  useEffect(() => { loadStatus(); }, [orderId]);
-
-  const startPayment = async () => {
-    setChecking(true);
-    setError('');
-    try {
-      await startRazorpayPayment(orderId);
-      await loadStatus();
-    } catch (err) {
-      await loadStatus();
-      setError(err.response?.data?.message || err.message || 'Unable to start payment.');
-      setChecking(false);
-    }
-  };
-
-  if (loading) return <div className="page-shell loader">Checking payment status...</div>;
-  if (error && !data) return <main className="page-shell"><div className="feedback error" role="alert">{error}</div><Link className="btn btn-secondary" to="/orders">Back to orders</Link></main>;
-
-  const order = data.order;
-  const payment = data.payment;
-  const isPaid = order.paymentStatus === 'PAID';
-  const isFailed = !isPaid && (order.paymentStatus === 'FAILED' || payment?.status === 'FAILED');
+  const paymentSucceeded = order?.paymentStatus === 'PAID';
+  const paymentWasCancelled = location.state?.paymentStatus === 'FAILED' || order?.paymentStatus === 'FAILED';
 
   return (
     <main className="page-shell payment-result-shell">
-      <section className={`panel payment-result ${isPaid ? 'payment-success' : isFailed ? 'payment-failure' : 'payment-pending'}`}>
-        <span className="eyebrow">Order {order.orderNumber}</span>
-        <h2>{isPaid ? 'Payment successful' : isFailed ? 'Payment failed' : 'Payment pending'}</h2>
-        <p>{isPaid ? 'Your payment has been verified by the server.' : isFailed ? (payment?.failureReason || 'The order has not been paid. You can retry this payment.') : 'The order is not marked paid. Check status or continue test checkout.'}</p>
-        <div className="payment-result-facts">
-          <div><strong>Order number</strong><span>{order.orderNumber}</span></div>
-          <div><strong>Amount</strong><span>₹{Number(order.amount).toLocaleString('en-IN')}</span></div>
-          <div><strong>Order status</strong><span>{order.orderStatus}</span></div>
-          <div><strong>Payment status</strong><span>{order.paymentStatus}</span></div>
-          {payment?.razorpayPaymentId && <div><strong>Payment ID</strong><span>{payment.razorpayPaymentId}</span></div>}
-          {(order.paidAt || payment?.createdAt) && <div><strong>Date</strong><span>{new Date(order.paidAt || payment.createdAt).toLocaleString()}</span></div>}
-          {payment?.method && <div><strong>Method</strong><span>{payment.method}</span></div>}
-        </div>
+      <div className={`panel payment-result ${paymentSucceeded ? 'payment-success' : paymentWasCancelled ? 'payment-failure' : 'payment-pending'}`}>
+        <span className="eyebrow">Order {order?.orderNumber || orderId}</span>
+        <h2>{loading ? 'Checking payment status...' : paymentSucceeded ? 'Payment successful' : error ? 'Unable to confirm payment' : paymentWasCancelled ? 'Payment not completed' : 'Payment status pending'}</h2>
+        <p>{paymentSucceeded
+          ? 'Your payment has been verified. You can follow the latest delivery status from your orders.'
+          : paymentWasCancelled
+            ? 'The payment was not completed. Your order remains available in My Orders.'
+            : 'We could not confirm a completed payment yet. Check the latest status before trying again.'}</p>
         {error && <div className="feedback error" role="alert">{error}</div>}
-        <div className="auth-actions payment-result-actions">
-          {isPaid ? (
-            <Link className="btn btn-primary" to={`/orders/${order.id}`}>View Order</Link>
-          ) : order.orderStatus !== 'CANCELLED' ? (
-            <>
-              <button className="btn btn-primary" type="button" onClick={startPayment} disabled={checking}>
-                {checking ? 'Opening checkout...' : isFailed ? 'Retry Payment' : 'Pay Now'}
-              </button>
-              <button className="btn btn-secondary" type="button" onClick={() => { setChecking(true); loadStatus(); }} disabled={checking}>Check Status</button>
-              <Link className="btn btn-secondary" to={`/orders/${order.id}`}>Back to Order</Link>
-            </>
-          ) : <Link className="btn btn-secondary" to={`/orders/${order.id}`}>Back to Order</Link>}
-        </div>
-      </section>
-    </main>
-  );
-}
-
-function RetailerRegistrationPage() {
-  const navigate = useNavigate();
-  const [form, setForm] = useState({ name: '', email: '', mobile: '', password: '', confirmPassword: '' });
-  const [error, setError] = useState('');
-  const [loading, setLoading] = useState(false);
-
-  const change = (event) => {
-    const { name, value } = event.target;
-    setForm((previous) => ({ ...previous, [name]: value }));
-  };
-
-  const submit = async (event) => {
-    event.preventDefault();
-    setLoading(true);
-    setError('');
-    try {
-      const { data } = await api.post('/auth/retailer/register', form);
-      setStoredAuth(data.user, data.token);
-      navigate('/retailer/profile');
-    } catch (err) {
-      setError(err.response?.data?.message || 'Unable to register retailer.');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  return (
-    <main className="page-shell auth-shell">
-      <div className="auth-card">
-        <div className="auth-header"><div className="brand-badge"><Store size={18} /></div><h2>Retailer Registration</h2><p>Your account will remain pending review.</p></div>
-        <form className="auth-form" onSubmit={submit}>
-          <label>Owner/contact name<input name="name" value={form.name} onChange={change} required /></label>
-          <label>Email<input type="email" name="email" value={form.email} onChange={change} required /></label>
-          <label>Mobile<input type="tel" name="mobile" value={form.mobile} onChange={change} pattern="[0-9]{10}" minLength={10} maxLength={10} required /></label>
-          <label>Password<input type="password" name="password" value={form.password} onChange={change} minLength={8} required /></label>
-          <label>Confirm password<input type="password" name="confirmPassword" value={form.confirmPassword} onChange={change} minLength={8} required /></label>
-          {error && <div className="feedback error" role="alert">{error}</div>}
-          <button className="btn btn-primary" type="submit" disabled={loading}>{loading ? 'Creating account...' : 'Create retailer account'}</button>
-        </form>
-        <div className="auth-links"><Link to="/retailer/login">Already registered? Sign in</Link><Link to="/login">Farmer portal</Link></div>
+        {order && <div className="payment-result-facts">
+          <div><span>Order status</span><strong>{order.orderStatus}</strong></div>
+          <div><span>Payment status</span><strong>{order.paymentStatus}</strong></div>
+          <div><span>Amount</span><strong>₹{Number(order.amount || 0).toLocaleString('en-IN')}</strong></div>
+        </div>}
+        <Link className="btn btn-primary mt-sm" to="/orders">View My Orders</Link>
       </div>
     </main>
   );
 }
 
 function DeliveryDashboard() {
-  const [deliveries, setDeliveries] = useState([]);
+  const [dashboard, setDashboard] = useState(null);
+  const [availableDeliveries, setAvailableDeliveries] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [busyId, setBusyId] = useState('');
+  const [error, setError] = useState('');
+  const [refreshKey, setRefreshKey] = useState(0);
+
   useEffect(() => {
-    api.get('/delivery/dashboard').then(({ data }) => setDeliveries(data.deliveries || [])).catch(() => setDeliveries([]));
-  }, []);
+    let active = true;
+    const load = async () => {
+      setLoading(true);
+      setError('');
+      try {
+        const { data } = await api.get('/delivery/dashboard');
+        if (!active) return;
+        setDashboard(data);
+        if (data.profile?.isAvailable && data.profile?.status === 'VERIFIED') {
+          const availableResponse = await api.get('/delivery/available');
+          if (active) setAvailableDeliveries(availableResponse.data.deliveries || []);
+        } else {
+          setAvailableDeliveries([]);
+        }
+      } catch (err) {
+        if (active) setError(err.response?.data?.message || 'Unable to load delivery dashboard.');
+      } finally {
+        if (active) setLoading(false);
+      }
+    };
+    load();
+    return () => { active = false; };
+  }, [refreshKey]);
+
+  const updateAvailability = async () => {
+    const isAvailable = !dashboard?.profile?.isAvailable;
+    setBusyId('availability');
+    setError('');
+    try {
+      await api.patch('/delivery/availability', { isAvailable });
+      setRefreshKey((value) => value + 1);
+    } catch (err) {
+      setError(err.response?.data?.message || 'Unable to update availability.');
+    } finally {
+      setBusyId('');
+    }
+  };
+
+  const claimDelivery = async (deliveryId) => {
+    setBusyId(deliveryId);
+    setError('');
+    try {
+      await api.post(`/delivery/deliveries/${deliveryId}/claim`);
+      setRefreshKey((value) => value + 1);
+    } catch (err) {
+      setError(err.response?.data?.message || 'Unable to claim this delivery.');
+    } finally {
+      setBusyId('');
+    }
+  };
+
+  const updateDeliveryStatus = async (delivery) => {
+    const nextStatus = {
+      READY_FOR_PICKUP: 'PICKED_UP',
+      PICKED_UP: 'OUT_FOR_DELIVERY',
+      OUT_FOR_DELIVERY: 'DELIVERED'
+    }[delivery.status];
+    if (!nextStatus) return;
+    setBusyId(delivery.id);
+    setError('');
+    try {
+      await api.put(`/delivery/deliveries/${delivery.id}/status`, { status: nextStatus });
+      setRefreshKey((value) => value + 1);
+    } catch (err) {
+      setError(err.response?.data?.message || 'Unable to update delivery status.');
+    } finally {
+      setBusyId('');
+    }
+  };
+
+  if (loading && !dashboard) return <div className="page-shell loader">Loading delivery dashboard...</div>;
+  if (!dashboard && error) {
+    return (
+      <main className="page-shell">
+        <div className="feedback error" role="alert">{error}</div>
+        <button type="button" className="btn btn-secondary mt-md" onClick={() => setRefreshKey((value) => value + 1)}>Retry</button>
+      </main>
+    );
+  }
 
   return (
-    <main className="page-shell">
+    <main className="page-shell delivery-dashboard-page">
       <section className="section-header">
-        <div>
-          <span className="eyebrow">Delivery partner</span>
-          <h2>Assigned deliveries</h2>
+        <div><span className="eyebrow">Delivery operations</span><h2>Welcome, {dashboard?.profile?.name || 'Delivery Partner'}</h2>
+          <p className="section-description">Review your assigned deliveries and update each stop as it progresses.</p>
+        </div>
+        <div className="delivery-availability">
+          <span className={`pill ${dashboard?.profile?.isAvailable ? 'green' : 'amber'}`}>
+            {dashboard?.profile?.status === 'VERIFIED' ? (dashboard.profile.isAvailable ? 'Available' : 'Unavailable') : dashboard?.profile?.status || 'Status unavailable'}
+          </span>
+          {dashboard?.profile?.status === 'VERIFIED' && (
+            <button type="button" className="btn btn-secondary" onClick={updateAvailability} disabled={busyId === 'availability'}>
+              {busyId === 'availability' ? 'Updating...' : dashboard.profile.isAvailable ? 'Go offline' : 'Go available'}
+            </button>
+          )}
         </div>
       </section>
-      <div className="list-stack">
-        {deliveries.length === 0 ? <div className="panel">No assigned deliveries.</div> : deliveries.map((delivery) => (
-          <div className="panel order-row" key={delivery.id}>
-            <div>
-              <strong>{delivery.id}</strong>
-              <p>{delivery.pickupLocation} to {delivery.deliveryLocation}</p>
-            </div>
-            <span className="pill amber">{delivery.status}</span>
-          </div>
-        ))}
+      {error && <div className="feedback error" role="alert">{error}</div>}
+      <div className="stats-grid delivery-stats-grid">
+        <StatCard label="Assigned" value={dashboard?.stats?.assigned ?? 0} />
+        <StatCard label="Pickup pending" value={dashboard?.stats?.pickupPending ?? 0} tone="amber" />
+        <StatCard label="Out for delivery" value={dashboard?.stats?.outForDelivery ?? 0} tone="blue" />
+        <StatCard label="Delivered" value={dashboard?.stats?.delivered ?? 0} />
       </div>
+      <section className="panel mt-md">
+        <div className="section-header"><div><span className="eyebrow">My route</span><h3>Assigned deliveries</h3></div></div>
+        {dashboard?.deliveries?.length ? (
+          <div className="delivery-list">
+            {dashboard.deliveries.map((delivery) => (
+              <article className="delivery-card" key={delivery.id}>
+                <div className="delivery-card-heading"><strong>{delivery.orderNumber}</strong><span className="pill green">{delivery.status.replaceAll('_', ' ')}</span></div>
+                <div className="delivery-details">
+                  <div><span>Pickup</span><strong>{delivery.pickupAddress || 'Address unavailable'}</strong></div>
+                  <div><span>Drop-off</span><strong>{delivery.deliveryAddress || 'Address unavailable'}</strong></div>
+                  <div><span>Farmer</span><strong>{delivery.farmer?.name || 'Unavailable'} {delivery.farmer?.mobile && `· ${delivery.farmer.mobile}`}</strong></div>
+                  <div><span>Retailer</span><strong>{delivery.retailer?.name || 'Unavailable'}</strong></div>
+                </div>
+                <details className="delivery-extra-details">
+                  <summary>View delivery details</summary>
+                  <p>{(delivery.items || []).map((item) => `${item.name} × ${item.quantity}`).join(', ') || 'No item details available.'}</p>
+                  {delivery.currentLocation && <p>Latest coordinates: {delivery.currentLocation.lat}, {delivery.currentLocation.lng}</p>}
+                  {delivery.locationUpdatedAt && <p>Location updated: {new Date(delivery.locationUpdatedAt).toLocaleString('en-IN')}</p>}
+                </details>
+                {delivery.status !== 'DELIVERED' && (
+                  <button type="button" className="btn btn-primary" disabled={busyId === delivery.id} onClick={() => updateDeliveryStatus(delivery)}>
+                    {busyId === delivery.id ? 'Updating...' : `Mark ${({ READY_FOR_PICKUP: 'picked up', PICKED_UP: 'out for delivery', OUT_FOR_DELIVERY: 'delivered' })[delivery.status]}`}
+                  </button>
+                )}
+              </article>
+            ))}
+          </div>
+        ) : <div className="empty-state">No deliveries are currently assigned to you.</div>}
+      </section>
+      {dashboard?.profile?.isAvailable && (
+        <section className="panel mt-md">
+          <div className="section-header"><div><span className="eyebrow">Pickup queue</span><h3>Available deliveries</h3></div></div>
+          {availableDeliveries.length ? (
+            <div className="delivery-list">
+              {availableDeliveries.map((delivery) => (
+                <article className="delivery-card" key={delivery.id}>
+                  <div className="delivery-card-heading"><strong>{delivery.orderNumber}</strong><span className="pill amber">{delivery.status.replaceAll('_', ' ')}</span></div>
+                  <div className="delivery-details">
+                    <div><span>Pickup</span><strong>{delivery.pickupAddress || 'Address unavailable'}</strong></div>
+                    <div><span>Drop-off</span><strong>{delivery.deliveryAddress || 'Address unavailable'}</strong></div>
+                    <div><span>Items</span><strong>{delivery.items?.length || 0}</strong></div>
+                  </div>
+                  <button type="button" className="btn btn-primary" disabled={busyId === delivery.id} onClick={() => claimDelivery(delivery.id)}>
+                    {busyId === delivery.id ? 'Claiming...' : 'Claim delivery'}
+                  </button>
+                </article>
+              ))}
+            </div>
+          ) : <div className="empty-state">No paid pickup jobs are available right now.</div>}
+        </section>
+      )}
     </main>
   );
 }
 
 function AdminDashboard() {
-  const [stats, setStats] = useState({ farmers: 0, retailers: 0, deliveryPartners: 0, products: 0, orders: 0, revenue: 0 });
+  const [stats, setStats] = useState(null);
+  const [registrations, setRegistrations] = useState([]);
+  const [orderActivity, setOrderActivity] = useState([]);
+  const [orderStatuses, setOrderStatuses] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
   useEffect(() => {
-    api.get('/admin/stats').then(({ data }) => setStats(data.totals || {})).catch(() => setStats({ farmers: 0, retailers: 0, deliveryPartners: 0, products: 0, orders: 0, revenue: 0 }));
+    Promise.all([api.get('/admin/dashboard'), api.get('/admin/overview-stats')])
+      .then(([dashboardResponse, overviewResponse]) => {
+        setStats(dashboardResponse.data.totals || {});
+        setOrderActivity(dashboardResponse.data.charts?.ordersByDay || []);
+        setOrderStatuses(dashboardResponse.data.charts?.ordersByStatus || []);
+        setRegistrations(overviewResponse.data.data?.growth || []);
+      })
+      .catch((err) => setError(err.response?.data?.message || 'Unable to load admin dashboard data.'))
+      .finally(() => setLoading(false));
   }, []);
 
+  const monthlyOrders = orderStatuses.reduce((summary, entry) => {
+    summary[entry.status] = (summary[entry.status] || 0) + entry.count;
+    return summary;
+  }, {});
+  const maxRegistrationCount = Math.max(1, ...registrations.map((entry) => entry.count));
+  const maxDailyOrders = Math.max(1, ...orderActivity.map((entry) => entry.orders));
+
   return (
-    <main className="page-shell">
-      <section className="section-header">
-        <div>
-          <span className="eyebrow">Admin</span>
-          <h2>System overview</h2>
-        </div>
-      </section>
-      <div className="stats-grid">
-        <StatCard label="Farmers" value={stats.farmers || 0} />
-        <StatCard label="Retailers" value={stats.retailers || 0} />
-        <StatCard label="Delivery partners" value={stats.deliveryPartners || 0} />
-        <StatCard label="Products" value={stats.products || 0} />
-        <StatCard label="Orders" value={stats.orders || 0} />
-        <StatCard label="Revenue" value={`₹${stats.revenue || 0}`} tone="amber" />
-      </div>
-    </main>
+    <AdminPageLayout>
+      <main className="page-shell admin-dashboard">
+        <nav className="admin-breadcrumb" aria-label="Breadcrumb">
+          <Link to="/">Home</Link><span aria-hidden="true">/</span><span>Admin</span>
+        </nav>
+        <section className="section-header admin-dashboard-heading">
+          <div><span className="eyebrow">Administration</span><h2>System Overview</h2><p className="section-description">Live platform activity from registered users, products, orders, and payments.</p></div>
+        </section>
+        {error && <div className="feedback error" role="alert">{error}</div>}
+        {loading ? <div className="loader">Loading live statistics...</div> : !stats ? null : (
+          <>
+            <div className="stats-grid admin-stats-grid">
+              <StatCard label="Farmers" value={stats?.farmers ?? 0} />
+              <StatCard label="Retailers" value={stats?.retailers ?? 0} />
+              <StatCard label="Delivery partners" value={stats?.deliveryPartners ?? 0} />
+              <StatCard label="Products" value={stats?.totalProducts ?? 0} />
+              <StatCard label="Orders" value={stats?.totalOrders ?? 0} />
+              <StatCard label="Revenue" value={`₹${Number(stats?.revenue || 0).toLocaleString('en-IN')}`} tone="amber" />
+            </div>
+            <div className="admin-analytics-grid">
+              <section className="panel admin-chart-panel">
+                <div className="section-header"><div><span className="eyebrow">Past quarter</span><h3>New account registrations</h3></div></div>
+                {registrations.length ? (
+                  <div className="admin-bars" role="img" aria-label="Monthly new account registrations">
+                    {registrations.map((entry) => {
+                      const label = new Intl.DateTimeFormat('en-IN', { month: 'short' }).format(new Date(entry._id.year, entry._id.month - 1, 1));
+                      return <div className="admin-bar-item" key={`${entry._id.year}-${entry._id.month}`}>
+                        <strong>{entry.count}</strong>
+                        <span className="admin-bar-track"><i style={{ height: `${(entry.count / maxRegistrationCount) * 100}%` }} /></span>
+                        <span>{label}</span>
+                      </div>;
+                    })}
+                  </div>
+                ) : <div className="empty-state">No account registrations in this period.</div>}
+              </section>
+              <section className="panel admin-chart-panel">
+                <div className="section-header"><div><span className="eyebrow">Last 14 days</span><h3>Order activity</h3></div></div>
+                {orderActivity.length ? (
+                  <div className="admin-bars" role="img" aria-label="Daily order activity over the past two weeks">
+                    {orderActivity.map((entry) => (
+                      <div className="admin-bar-item" key={entry.date}>
+                        <strong>{entry.orders}</strong>
+                        <span className="admin-bar-track"><i className="admin-bar-orders" style={{ height: `${(entry.orders / maxDailyOrders) * 100}%` }} /></span>
+                        <span>{new Date(`${entry.date}T00:00:00`).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}</span>
+                      </div>
+                    ))}
+                  </div>
+                ) : <div className="empty-state">No orders in this period.</div>}
+              </section>
+            </div>
+            <section className="panel admin-status-panel">
+              <div className="section-header"><div><span className="eyebrow">Order management</span><h3>Orders by status</h3></div></div>
+              {Object.keys(monthlyOrders).length ? (
+                <div className="admin-status-list">
+                  {Object.entries(monthlyOrders).map(([status, count]) => (
+                    <div className="admin-status-item" key={status}><span>{status.replaceAll('_', ' ')}</span><strong>{count}</strong></div>
+                  ))}
+                </div>
+              ) : <div className="empty-state">No order records are available.</div>}
+            </section>
+          </>
+        )}
+      </main>
+    </AdminPageLayout>
   );
 }
 
+/* ---------------- Root Route Component ---------------- */
 export default function App() {
   return (
-    <BrowserRouter>
+    <BrowserRouter
+      future={{
+        v7_startTransition: true,
+        v7_relativeSplatPath: true,
+      }}
+    >
       <AppShell>
         <Routes>
           <Route path="/" element={<HomePage />} />
@@ -1559,6 +1744,7 @@ export default function App() {
           <Route path="/delivery/login" element={<RoleAuthPage role="delivery" label="Delivery Partner Login" />} />
           <Route path="/admin/login" element={<RoleAuthPage role="admin" label="Admin Login" />} />
 
+          {/* Farmer Features */}
           <Route path="/farmer/profile" element={<ProtectedRoute allowedRoles={['farmer']}><FarmerProfilePage /></ProtectedRoute>} />
           <Route path="/farmer/dashboard" element={<ProtectedRoute allowedRoles={['farmer']}><FarmerDashboard /></ProtectedRoute>} />
           <Route path="/farmer/crop" element={<ProtectedRoute allowedRoles={['farmer']}><CropSelectionPage /></ProtectedRoute>} />
@@ -1566,6 +1752,7 @@ export default function App() {
           <Route path="/farmer/products" element={<ProtectedRoute allowedRoles={['farmer']}><FarmerProductsPage /></ProtectedRoute>} />
           <Route path="/farmer/recommendations" element={<ProtectedRoute allowedRoles={['farmer']}><RecommendationsPage /></ProtectedRoute>} />
 
+          {/* Commerce & Payments */}
           <Route path="/products/:id" element={<ProtectedRoute allowedRoles={['farmer']}><ProductDetailPage /></ProtectedRoute>} />
           <Route path="/cart" element={<ProtectedRoute allowedRoles={['farmer']}><CartPage /></ProtectedRoute>} />
           <Route path="/checkout" element={<ProtectedRoute allowedRoles={['farmer']}><CheckoutPage /></ProtectedRoute>} />
@@ -1573,6 +1760,7 @@ export default function App() {
           <Route path="/orders/:id" element={<ProtectedRoute allowedRoles={['farmer']}><OrderDetailPage /></ProtectedRoute>} />
           <Route path="/payments/result/:orderId" element={<ProtectedRoute allowedRoles={['farmer']}><PaymentResultPage /></ProtectedRoute>} />
 
+          {/* Retailer & Operations */}
           <Route path="/retailer/dashboard" element={<ProtectedRoute allowedRoles={['retailer']}><RetailerDashboardPage /></ProtectedRoute>} />
           <Route path="/retailer/profile" element={<ProtectedRoute allowedRoles={['retailer']}><RetailerProfilePage /></ProtectedRoute>} />
           <Route path="/retailer/products" element={<ProtectedRoute allowedRoles={['retailer']}><RetailerProductsPage /></ProtectedRoute>} />
@@ -1582,6 +1770,13 @@ export default function App() {
           <Route path="/retailer/orders/:id" element={<ProtectedRoute allowedRoles={['retailer']}><RetailerOrderDetailsPage /></ProtectedRoute>} />
           <Route path="/delivery/dashboard" element={<ProtectedRoute allowedRoles={['delivery']}><DeliveryDashboard /></ProtectedRoute>} />
           <Route path="/admin/dashboard" element={<ProtectedRoute allowedRoles={['admin']}><AdminDashboard /></ProtectedRoute>} />
+          <Route path="/admin/users" element={<ProtectedRoute allowedRoles={['admin']}><AdminUsersPage /></ProtectedRoute>} />
+          <Route path="/admin/products" element={<ProtectedRoute allowedRoles={['admin']}><AdminProductsPage /></ProtectedRoute>} />
+          <Route path="/admin/inventory" element={<ProtectedRoute allowedRoles={['admin']}><AdminInventoryPage /></ProtectedRoute>} />
+          <Route path="/admin/orders" element={<ProtectedRoute allowedRoles={['admin']}><AdminOrdersPage /></ProtectedRoute>} />
+          <Route path="/admin/orders/:id" element={<ProtectedRoute allowedRoles={['admin']}><AdminOrderDetailsPage /></ProtectedRoute>} />
+          <Route path="/admin/analytics" element={<ProtectedRoute allowedRoles={['admin']}><AdminDashboard /></ProtectedRoute>} />
+          <Route path="/admin/settings" element={<ProtectedRoute allowedRoles={['admin']}><AdminAccountPage /></ProtectedRoute>} />
         </Routes>
       </AppShell>
     </BrowserRouter>

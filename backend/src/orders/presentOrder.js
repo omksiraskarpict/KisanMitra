@@ -4,6 +4,12 @@ const presentOrder = (order) => {
     id: value.orderNumber || value._id.toString(),
     orderNumber: value.orderNumber || value._id.toString(),
     farmerId: value.farmer?._id?.toString() || value.farmer?.toString(),
+    farmer: value.farmer?.name ? {
+      id: value.farmer._id?.toString() || value.farmer.id,
+      name: value.farmer.name,
+      email: value.farmer.email,
+      mobile: value.farmer.mobile
+    } : null,
     retailerId: value.retailer?._id?.toString() || value.retailer?.toString() || null,
     retailerName: value.retailerName || '',
     items: (value.items || []).map((item) => ({

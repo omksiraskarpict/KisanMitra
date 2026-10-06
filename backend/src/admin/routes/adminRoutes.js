@@ -1,6 +1,10 @@
 const express = require('express');
 const mongoose = require('mongoose');
-const { authenticate, authorize } = require('../../middleware/auth');
+
+// Auth Middleware (supports both conventions from your combined auth module)
+const { authenticate, verifyToken, authorize, requireSuperAdmin } = require('../../middleware/auth');
+
+// Models
 const User = require('../../database/models/User');
 const Product = require('../../database/models/Product');
 const Order = require('../../database/models/Order');
@@ -8,29 +12,93 @@ const Delivery = require('../../database/models/Delivery');
 const Crop = require('../../database/models/Crop');
 const Question = require('../../database/models/Question');
 const Category = require('../../database/models/Category');
+
+// Presenters / Helpers
 const { presentOrder } = require('../../orders/presentOrder');
 const { presentDelivery } = require('../../delivery/presentDelivery');
 const { presentProduct } = require('../../products/presentProduct');
 
+// Controller handlers from second file
+const {
+  getOverviewStats,
+  getOrderSummary,
+  getApprovalsQueue,
+  handleApprovalDecision,
+  getMachineryActivity,
+  flagMachineryListing,
+  getInventoryAlerts
+} = require('../../controllers/adminController');
+
 const router = express.Router();
-router.use(authenticate, authorize('admin'));
+
+// ----------------------------------------------------
+// Guard: Protect all routes (handles admin & Super Admin)
+// ----------------------------------------------------
+const authMiddleware = authenticate || verifyToken;
+const adminCheck = authorize ? authorize('admin', 'Admin', 'Super Admin') : requireSuperAdmin;
+
+router.use(authMiddleware, adminCheck);
+
+// Hydrate req.admin context
 router.use(async (req, res, next) => {
   try {
-    const admin = await User.findOne({ _id: req.user.id, role: 'admin' }).select('_id name email role');
-    if (!admin) return res.status(401).json({ message: 'Admin account not found.' });
+    const userId = req.user?._id || req.user?.id;
+    const admin = await User.findOne({ 
+      _id: userId, 
+      role: { $in: ['admin', 'Admin', 'Super Admin'] } 
+    }).select('_id name email role');
+
+    if (!admin) {
+      return res.status(401).json({ success: false, message: 'Admin account not found.' });
+    }
+
     req.admin = admin;
     return next();
   } catch (error) {
     console.error('Load admin account error:', error);
-    return res.status(500).json({ message: 'Unable to load admin account.' });
+    return res.status(500).json({ success: false, message: 'Unable to load admin account.' });
   }
 });
 
+// Health check
 router.get('/health', (req, res) => res.json({ status: 'ok', module: 'admin' }));
 
+// ----------------------------------------------------
+// Section 1: Controller-based Routes (from second file)
+// ----------------------------------------------------
+// Analytics & Reports
+router.get('/overview-stats', getOverviewStats);
+router.get('/order-summary', getOrderSummary);
+
+// Approvals Queue
+router.get('/approvals', getApprovalsQueue);
+router.patch('/approvals/:id/decision', handleApprovalDecision);
+
+// Machinery
+router.get('/machinery-activity', getMachineryActivity);
+router.patch('/machinery/:id/flag', flagMachineryListing);
+
+// Inventory Alerts
+router.get('/inventory-status', getInventoryAlerts);
+
+// ----------------------------------------------------
+// Section 2: Inline Analytics & Dashboards (from first file)
+// ----------------------------------------------------
 const getDashboardStats = async () => {
-  const [farmers, retailers, deliveryPartners, pendingFarmers, pendingRetailers, pendingDeliveryPartners,
-    totalProducts, activeProducts, orderGroups, deliveryGroups, categoryCounts, dailyOrders] = await Promise.all([
+  const [
+    farmers,
+    retailers,
+    deliveryPartners,
+    pendingFarmers,
+    pendingRetailers,
+    pendingDeliveryPartners,
+    totalProducts,
+    activeProducts,
+    orderGroups,
+    deliveryGroups,
+    categoryCounts,
+    dailyOrders
+  ] = await Promise.all([
     User.countDocuments({ role: 'farmer' }),
     User.countDocuments({ role: 'retailer' }),
     User.countDocuments({ role: 'delivery' }),
@@ -40,20 +108,18 @@ const getDashboardStats = async () => {
     Product.countDocuments({ deleted: false }),
     Product.countDocuments({ active: true, deleted: false }),
     Order.aggregate([
-      { $group: { _id: { orderStatus: '$orderStatus', paymentStatus: '$paymentStatus' }, count: { $sum: 1 }, amount: { $sum: '$amount' } } }
+      { $group: { _id: { orderStatus: '$orderStatus', paymentStatus: '$paymentStatus' }, count: {$sum: 1 }, amount: { $sum: '$amount' } } }
     ]),
-    Delivery.aggregate([{ $group: { _id: '$status', count: { $sum: 1 } } }]),
+    Delivery.aggregate([{ $group: { _id: '$status', count: {$sum: 1 } } }]),
     Product.aggregate([
       { $match: { deleted: false } },
       { $lookup: { from: 'categories', localField: 'categoryId', foreignField: '_id', as: 'category' } },
       { $unwind: { path: '$category', preserveNullAndEmptyArrays: true } },
-      { $group: { _id: '$category.name', count: { $sum: 1 } } },
-      { $sort: { count: -1 } }
+      { $group: { _id: '$category.name', count: { $sum: 1 } } },       {$sort: { count: -1 } }
     ]),
     Order.aggregate([
-      { $match: { createdAt: { $gte: new Date(Date.now() - 13 * 24 * 60 * 60 * 1000) } } },
-      { $group: { _id: { $dateToString: { format: '%Y-%m-%d', date: '$createdAt' } }, count: { $sum: 1 }, revenue: { $sum: { $cond: [{ $eq: ['$paymentStatus', 'PAID'] }, '$amount', 0] } } } },
-      { $sort: { _id: 1 } }
+      { $match: { createdAt: {$gte: new Date(Date.now() - 13 * 24 * 60 * 60 * 1000) } } },
+      { $group: { _id: {$dateToString: { format: '%Y-%m-%d', date: '$createdAt' } }, count: {$sum: 1 }, revenue: { $sum: {$cond: [{ $eq: ['$paymentStatus', 'PAID'] }, '$amount', 0] } } } },       {$sort: { _id: 1 } }
     ])
   ]);
 
@@ -62,6 +128,7 @@ const getDashboardStats = async () => {
   const paidOrders = orderGroups.filter((entry) => entry._id.paymentStatus === 'PAID');
   const revenue = paidOrders.reduce((sum, entry) => sum + entry.amount, 0);
   const deliveryCount = (status) => deliveryGroups.find((entry) => entry._id === status)?.count || 0;
+
   return {
     totals: {
       farmers,
@@ -100,6 +167,7 @@ router.get('/dashboard', async (req, res) => {
     return res.status(500).json({ message: 'Unable to load admin dashboard.' });
   }
 });
+
 router.get('/stats', async (req, res) => {
   try {
     const { totals } = await getDashboardStats();
@@ -109,6 +177,7 @@ router.get('/stats', async (req, res) => {
     return res.status(500).json({ message: 'Unable to load admin statistics.' });
   }
 });
+
 router.get('/charts', async (req, res) => {
   try {
     const { charts } = await getDashboardStats();
@@ -119,6 +188,9 @@ router.get('/charts', async (req, res) => {
   }
 });
 
+// ----------------------------------------------------
+// Section 3: User & Verification Management
+// ----------------------------------------------------
 router.get('/users', async (req, res) => {
   const role = ['farmer', 'retailer', 'delivery', 'admin'].includes(req.query.role) ? req.query.role : undefined;
   const status = ['PENDING', 'VERIFIED', 'REJECTED'].includes(req.query.status) ? req.query.status : undefined;
@@ -126,6 +198,7 @@ router.get('/users', async (req, res) => {
   const limit = Math.min(100, Math.max(1, Number.parseInt(req.query.limit, 10) || 25));
   const filter = { ...(role ? { role } : {}), ...(status ? { accountStatus: status } : {}) };
   const search = String(req.query.search || '').trim();
+
   if (search) {
     const expression = new RegExp(search.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i');
     filter.$or = [{ name: expression }, { email: expression }, { mobile: expression }, { businessName: expression }];
@@ -158,12 +231,14 @@ router.patch('/users/:id/verify', async (req, res) => {
   if (!mongoose.isValidObjectId(req.params.id)) return res.status(400).json({ message: 'Invalid user ID.' });
   const status = String(req.body.status || '');
   if (!['VERIFIED', 'REJECTED', 'PENDING'].includes(status)) return res.status(400).json({ message: 'Choose PENDING, VERIFIED, or REJECTED.' });
+
   try {
     const user = await User.findOneAndUpdate(
       { _id: req.params.id, role: { $in: ['farmer', 'retailer', 'delivery'] } },
       { $set: { status, accountStatus: status } },
       { new: true }
     ).select('-password -googleId');
+
     if (!user) return res.status(404).json({ message: 'Verifiable account not found.' });
     return res.json({ message: `Account marked ${status}.`, user: { ...user.toObject(), id: user._id.toString() } });
   } catch (error) {
@@ -172,10 +247,14 @@ router.patch('/users/:id/verify', async (req, res) => {
   }
 });
 
+// ----------------------------------------------------
+// Section 4: Products Management
+// ----------------------------------------------------
 router.get('/products', async (req, res) => {
   const page = Math.max(1, Number.parseInt(req.query.page, 10) || 1);
   const limit = Math.min(100, Math.max(1, Number.parseInt(req.query.limit, 10) || 25));
   const filter = req.query.includeDeleted === 'true' ? {} : { deleted: false };
+
   try {
     const [products, total] = await Promise.all([
       Product.find(filter).populate('retailerId', 'name businessName email').populate('categoryId', 'name').sort({ createdAt: -1 }).skip((page - 1) * limit).limit(limit).lean(),
@@ -195,6 +274,7 @@ router.patch('/products/:id', async (req, res) => {
   if (typeof req.body.deleted === 'boolean') updates.deleted = req.body.deleted;
   if (!Object.keys(updates).length) return res.status(400).json({ message: 'Provide active and/or deleted boolean values.' });
   if (updates.deleted) updates.active = false;
+
   try {
     const product = await Product.findByIdAndUpdate(req.params.id, { $set: updates }, { new: true })
       .populate('retailerId', 'name businessName email').populate('categoryId', 'name');
@@ -206,12 +286,16 @@ router.patch('/products/:id', async (req, res) => {
   }
 });
 
+// ----------------------------------------------------
+// Section 5: Orders Management
+// ----------------------------------------------------
 router.get('/orders', async (req, res) => {
   const page = Math.max(1, Number.parseInt(req.query.page, 10) || 1);
   const limit = Math.min(100, Math.max(1, Number.parseInt(req.query.limit, 10) || 25));
   const filter = {};
   if (['PENDING', 'PAID', 'FAILED', 'REFUNDED'].includes(req.query.paymentStatus)) filter.paymentStatus = req.query.paymentStatus;
   if (['ORDER_PLACED', 'CONFIRMED', 'PROCESSING', 'READY_FOR_PICKUP', 'PICKED_UP', 'OUT_FOR_DELIVERY', 'DELIVERED', 'CANCELLED'].includes(req.query.orderStatus)) filter.orderStatus = req.query.orderStatus;
+
   try {
     const [orders, total] = await Promise.all([
       Order.find(filter).populate('farmer', 'name email mobile').sort({ createdAt: -1 }).skip((page - 1) * limit).limit(limit).lean(),
@@ -228,6 +312,7 @@ router.get('/orders/:id', async (req, res) => {
   const filter = mongoose.isValidObjectId(req.params.id)
     ? { $or: [{ _id: req.params.id }, { orderNumber: req.params.id }] }
     : { orderNumber: req.params.id };
+
   try {
     const order = await Order.findOne(filter).populate('farmer', 'name email mobile').lean();
     if (!order) return res.status(404).json({ message: 'Order not found.' });
@@ -238,6 +323,9 @@ router.get('/orders/:id', async (req, res) => {
   }
 });
 
+// ----------------------------------------------------
+// Section 6: Deliveries & Logistics
+// ----------------------------------------------------
 router.get('/deliveries/ready', async (req, res) => {
   try {
     const deliveries = await Delivery.find({ status: 'READY_FOR_PICKUP', deliveryPartner: null })
@@ -253,6 +341,7 @@ router.get('/deliveries/ready', async (req, res) => {
 router.get('/deliveries', async (req, res) => {
   const filter = {};
   if (['READY_FOR_PICKUP', 'PICKED_UP', 'OUT_FOR_DELIVERY', 'DELIVERED'].includes(req.query.status)) filter.status = req.query.status;
+
   try {
     const deliveries = await Delivery.find(filter).populate('order', 'paymentStatus orderStatus')
       .populate('farmer', 'name mobile').populate('retailer', 'name businessName businessAddress city state')
@@ -268,23 +357,28 @@ router.post('/deliveries/:id/assign', async (req, res) => {
   if (!mongoose.isValidObjectId(req.params.id) || !mongoose.isValidObjectId(req.body.deliveryPartnerId)) {
     return res.status(400).json({ message: 'Valid delivery and partner IDs are required.' });
   }
+
   try {
     const partner = await User.findOne({ _id: req.body.deliveryPartnerId, role: 'delivery', accountStatus: 'VERIFIED' }).select('_id isAvailable');
     if (!partner) return res.status(404).json({ message: 'Verified delivery partner not found.' });
     if (!partner.isAvailable) return res.status(409).json({ message: 'Delivery partner is not available.' });
+
     const delivery = await Delivery.findOneAndUpdate(
       { _id: req.params.id, status: 'READY_FOR_PICKUP', deliveryPartner: null },
-      { $set: { deliveryPartner: partner._id, assignedAt: new Date() }, $push: { statusHistory: { status: 'READY_FOR_PICKUP', updatedBy: req.admin._id } } },
+      { $set: { deliveryPartner: partner._id, assignedAt: new Date() },$push: { statusHistory: { status: 'READY_FOR_PICKUP', updatedBy: req.admin._id } } },
       { new: true }
     );
+
     if (!delivery) return res.status(409).json({ message: 'Delivery is no longer available for assignment.' });
     await User.updateOne({ _id: partner._id }, { $set: { isAvailable: false } });
+
     await delivery.populate([
       { path: 'order', select: 'paymentStatus orderStatus' },
       { path: 'farmer', select: 'name mobile' },
       { path: 'retailer', select: 'name businessName businessAddress city state' },
       { path: 'deliveryPartner', select: 'name mobile vehicleType vehicleRegistration' }
     ]);
+
     return res.json({ message: 'Delivery assigned.', delivery: presentDelivery(delivery) });
   } catch (error) {
     console.error('Admin assign delivery error:', error);
@@ -292,6 +386,9 @@ router.post('/deliveries/:id/assign', async (req, res) => {
   }
 });
 
+// ----------------------------------------------------
+// Section 7: Crops, Questions, & Categories
+// ----------------------------------------------------
 router.get('/crops', async (req, res) => {
   try {
     const crops = await Crop.find({}).sort({ name: 1 }).lean();
@@ -303,7 +400,10 @@ router.get('/crops', async (req, res) => {
 });
 
 router.patch('/crops/:id', async (req, res) => {
-  if (!mongoose.isValidObjectId(req.params.id) || typeof req.body.active !== 'boolean') return res.status(400).json({ message: 'Valid crop ID and active flag are required.' });
+  if (!mongoose.isValidObjectId(req.params.id) || typeof req.body.active !== 'boolean') {
+    return res.status(400).json({ message: 'Valid crop ID and active flag are required.' });
+  }
+
   try {
     const crop = await Crop.findByIdAndUpdate(req.params.id, { $set: { active: req.body.active } }, { new: true });
     if (!crop) return res.status(404).json({ message: 'Crop not found.' });
