@@ -74,6 +74,9 @@ function ProtectedRoute({ children, allowedRoles = [] }) {
 function AppShell({ children }) {
   const user = getStoredUser();
   const navigate = useNavigate();
+  const location = useLocation();
+  const isFarmerLogin = location.pathname === '/login';
+  const isHomepage = location.pathname === '/';
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [cartCount, setCartCount] = useState(0);
   const [showNotifications, setShowNotifications] = useState(false);
@@ -97,8 +100,8 @@ function AppShell({ children }) {
   const navClass = ({ isActive }) => (isActive ? 'nav-link active' : 'nav-link');
 
   return (
-    <div className="app-shell">
-      <header className="topbar">
+    <div className={`app-shell${isFarmerLogin ? ' login-app-shell' : ''}${isHomepage ? ' home-app-shell' : ''}`}>
+      <header className={`topbar${isFarmerLogin ? ' login-topbar' : ''}${isHomepage ? ' home-topbar' : ''}`}>
         <div className="brand-wrap">
           <Link to="/" className="brand-logo-link">
             <div className="brand-badge glow"><Sprout size={20} /></div>
@@ -112,7 +115,7 @@ function AppShell({ children }) {
         {/* Desktop Navigation */}
         <nav className="topnav desktop-nav">
           <NavLink to="/" className={navClass}>Home</NavLink>
-          {user?.role === 'farmer' && (
+          {!isFarmerLogin && user?.role === 'farmer' && (
             <>
               <NavLink to="/farmer/dashboard" className={navClass}><Tractor size={15} /> Dashboard</NavLink>
               <NavLink to="/farmer/crop" className={navClass}><Leaf size={15} /> Crop Care</NavLink>
@@ -121,7 +124,7 @@ function AppShell({ children }) {
               <NavLink to="/orders" className={navClass}><PackageCheck size={15} /> My Orders</NavLink>
             </>
           )}
-          {user?.role === 'retailer' && (
+          {!isFarmerLogin && user?.role === 'retailer' && (
             <>
               <NavLink to="/retailer/dashboard" className={navClass}>Dashboard</NavLink>
               <NavLink to="/retailer/products" className={navClass}>Products</NavLink>
@@ -129,10 +132,10 @@ function AppShell({ children }) {
               <NavLink to="/retailer/orders" className={navClass}>Orders</NavLink>
             </>
           )}
-          {user?.role === 'delivery' && (
+          {!isFarmerLogin && user?.role === 'delivery' && (
             <NavLink to="/delivery/dashboard" className={navClass}><Truck size={15} /> Deliveries</NavLink>
           )}
-          {user?.role === 'admin' && (
+          {!isFarmerLogin && user?.role === 'admin' && (
             <NavLink to="/admin/dashboard" className={navClass}><ShieldCheck size={15} /> Admin</NavLink>
           )}
         </nav>
@@ -206,10 +209,24 @@ function AppShell({ children }) {
           >
             <NavLink to="/" className={navClass}>Home</NavLink>
             {!user && (
-              <>
-                <NavLink to="/delivery/login" className={navClass}>Delivery Login</NavLink>
-                <NavLink to="/delivery/register" className={navClass}>Delivery Partner Register</NavLink>
-              </>
+              isFarmerLogin ? (
+                <>
+                  <NavLink to="/login" className={navClass}>Sign In</NavLink>
+                  <NavLink to="/register" className={navClass}>Register</NavLink>
+                </>
+              ) : isHomepage ? (
+                <>
+                  <NavLink to="/login" className={navClass}>Sign In</NavLink>
+                  <NavLink to="/register" className={navClass}>Register</NavLink>
+                  <NavLink to="/delivery/login" className={navClass}>Delivery Login</NavLink>
+                  <NavLink to="/delivery/register" className={navClass}>Delivery Partner Register</NavLink>
+                </>
+              ) : (
+                <>
+                  <NavLink to="/delivery/login" className={navClass}>Delivery Login</NavLink>
+                  <NavLink to="/delivery/register" className={navClass}>Delivery Partner Register</NavLink>
+                </>
+              )
             )}
             {user?.role === 'farmer' && (
               <>
@@ -258,8 +275,12 @@ function HomePage() {
     <main className="page-shell home-page">
       <section className="hero">
         <div className="hero-copy">
-          <span className="eyebrow glow-pill">🌱 Smart Agriculture & Commerce Platform</span>
-          <h1>Empowering Farmers With Intelligence & Direct Access</h1>
+          <span className="eyebrow glow-pill"><span className="hero-badge-dot" />Smart Agriculture &amp; Commerce Platform</span>
+          <h1>
+            <span>Empowering Farmers</span>
+            <span>With Intelligence &amp;</span>
+            <span>Direct Access</span>
+          </h1>
           <p>
             Bridging crop health diagnostics, verified retailer inventory, swift checkout,
             and doorstep delivery tracking in a unified digital network.
@@ -289,9 +310,9 @@ function HomePage() {
           </div>
         </div>
         <div className="hero-panel">
-          <div className="mini-card pulse"><Sprout size={20} /> AI Crop Intelligence</div>
-          <div className="mini-card"><Wallet size={20} /> Secure Escrow Payments</div>
-          <div className="mini-card"><Truck size={20} /> Real-Time GPS Tracking</div>
+          <div className="mini-card pulse"><span className="feature-icon"><Leaf size={19} /></span><span>AI Crop Intelligence</span></div>
+          <div className="mini-card"><span className="feature-icon"><Wallet size={19} /></span><span>Secure Escrow Payments</span></div>
+          <div className="mini-card"><span className="feature-icon"><Truck size={19} /></span><span>Real-Time GPS Tracking</span></div>
         </div>
       </section>
 
@@ -328,14 +349,35 @@ function FarmerLoginPage() {
     if (user && user.role === 'farmer') navigate('/farmer/dashboard');
   }, [navigate]);
 
-  const handleChange = (e) => setForm((prev) => ({ ...prev, [e.target.name]: e.target.value }));
+  const handleChange = (e) => {
+    setForm((prev) => ({ ...prev, [e.target.name]: e.target.value }));
+    if (error) setError('');
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    const identifier = form.email.trim();
+    const isEmail = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(identifier);
+    const mobileDigits = identifier.replace(/\D/g, '');
+    const isMobile =
+      /^\+?[\d\s()-]+$/.test(identifier) &&
+      mobileDigits.length >= 7 &&
+      mobileDigits.length <= 15;
+
+    if (!identifier || !form.password) {
+      setError('Enter your email or mobile number and password.');
+      return;
+    }
+
+    if (!isEmail && !isMobile) {
+      setError('Enter a valid email address or mobile number.');
+      return;
+    }
+
     setLoading(true);
     setError('');
     try {
-      const { data } = await api.post('/auth/login', { ...form, role: 'farmer' });
+      const { data } = await api.post('/auth/login', { ...form, email: identifier, role: 'farmer' });
       setStoredAuth(data.user, data.token);
       navigate('/farmer/dashboard');
     } catch (err) {
@@ -346,23 +388,23 @@ function FarmerLoginPage() {
   };
 
   return (
-    <main className="page-shell auth-shell">
-      <div className="auth-card">
-        <div className="auth-header">
+    <main className="page-shell auth-shell farmer-login-page">
+      <div className="auth-card farmer-login-card">
+        <div className="auth-header farmer-login-header">
           <div className="brand-badge glow"><Sprout size={18} /></div>
           <h2>Farmer Login</h2>
           <p>Welcome back to KisanMitra</p>
         </div>
-        <form className="auth-form" onSubmit={handleSubmit}>
+        <form className="auth-form farmer-login-form" onSubmit={handleSubmit} noValidate>
           <label>
             Email or Mobile
-            <input type="text" name="email" value={form.email} onChange={handleChange} placeholder="farmer@example.com" required />
+            <input type="text" name="email" value={form.email} onChange={handleChange} placeholder="Enter your email or mobile" autoComplete="username" aria-label="Email or Mobile" />
           </label>
           <label>
             Password
-            <input type="password" name="password" value={form.password} onChange={handleChange} placeholder="••••••••" required />
+            <input type="password" name="password" value={form.password} onChange={handleChange} placeholder="Enter your password" autoComplete="current-password" aria-label="Password" />
           </label>
-          {error && <div className="feedback error">{error}</div>}
+          {error && <div className="feedback error" role="alert">{error}</div>}
           <div className="auth-actions">
             <button className="btn btn-primary" type="submit" disabled={loading}>{loading ? 'Signing in...' : 'Login'}</button>
             <Link className="btn btn-secondary" to="/register">Create account</Link>

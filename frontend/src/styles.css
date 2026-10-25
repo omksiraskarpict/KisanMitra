@@ -2799,3 +2799,799 @@ textarea:focus-visible {
     width: calc(100vw - 20px);
   }
 }
+
+.login-app-shell {
+  position: relative;
+  min-height: 100vh;
+  min-height: 100svh;
+  overflow-x: hidden;
+  isolation: isolate;
+  background:
+    linear-gradient(180deg, rgba(238, 246, 229, 0.02), rgba(237, 244, 224, 0.16)),
+    url('./assets/farm-landscape.svg') center center / cover no-repeat;
+}
+
+.login-topbar {
+  position: absolute;
+  top: 0;
+  left: 50%;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  width: min(1528px, calc(100% - clamp(36px, 6.2vw, 102px)));
+  max-width: 1528px;
+  min-height: 80px;
+  padding: 10px clamp(20px, 3.4vw, 56px);
+  border: 1px solid rgba(255, 255, 255, 0.64);
+  border-top: 0;
+  border-radius: 0 0 20px 20px;
+  background: rgba(255, 255, 255, 0.78);
+  box-shadow: 0 10px 34px rgba(37, 71, 43, 0.08);
+  backdrop-filter: blur(18px);
+  transform: translateX(-50%);
+}
+
+.login-topbar .brand-logo-link {
+  color: #17462f;
+}
+
+.login-topbar .brand-badge {
+  width: 44px;
+  height: 44px;
+  border-radius: 14px;
+  box-shadow: 0 8px 18px rgba(17, 93, 57, 0.2);
+}
+
+.login-topbar .brand-name {
+  font-family: Georgia, 'Times New Roman', serif;
+  font-size: 1.32rem;
+  letter-spacing: -0.04em;
+}
+
+.login-topbar .brand-tag {
+  margin-top: 2px;
+  font-size: 0.68rem;
+}
+
+.login-topbar .topnav {
+  justify-content: center;
+}
+
+.login-topbar .nav-link {
+  color: #4d5c53;
+  font-weight: 500;
+}
+
+.login-topbar .nav-link:hover,
+.login-topbar .nav-link.active {
+  background: transparent;
+  color: #17462f;
+}
+
+.login-topbar .user-actions {
+  justify-content: flex-end;
+}
+
+.login-topbar .guest-actions {
+  gap: 8px;
+}
+
+.login-topbar .guest-actions .btn {
+  min-width: 70px;
+  min-height: 42px;
+  border-radius: 11px;
+  box-shadow: 0 4px 12px rgba(34, 75, 45, 0.08);
+}
+
+.login-topbar .guest-actions .btn-primary {
+  background: linear-gradient(135deg, #176e48, #238653);
+}
+
+.farmer-login-page {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 100%;
+  max-width: none;
+  min-height: 100vh;
+  min-height: 100svh;
+  padding: 96px 24px 24px;
+}
+
+.farmer-login-card {
+  position: relative;
+  width: min(100%, 530px);
+  padding: 88px 27px 27px;
+  border: 1px solid rgba(255, 255, 255, 0.9);
+  border-radius: 20px;
+  background: rgba(255, 255, 250, 0.75);
+  box-shadow:
+    0 24px 52px rgba(41, 68, 40, 0.17),
+    0 8px 18px rgba(255, 255, 255, 0.34) inset;
+  backdrop-filter: blur(18px);
+  transform: translateY(-88px);
+}
+
+.farmer-login-header {
+  position: relative;
+  margin-bottom: 24px;
+}
+
+.farmer-login-header .brand-badge {
+  position: absolute;
+  top: -124px;
+  left: 50%;
+  width: 78px;
+  height: 78px;
+  border: 1px solid rgba(255, 255, 255, 0.55);
+  border-radius: 25px;
+  background: linear-gradient(145deg, #176e47, #56a96c);
+  box-shadow: 0 12px 25px rgba(24, 108, 62, 0.28);
+  transform: translateX(-50%);
+}
+
+.farmer-login-header .brand-badge svg {
+  width: 30px;
+  height: 30px;
+}
+
+.farmer-login-header h2 {
+  margin: 0 0 10px;
+  color: #17241d;
+  font-size: clamp(1.5rem, 3vw, 1.66rem);
+  font-weight: 750;
+  letter-spacing: -0.035em;
+}
+
+.farmer-login-header p {
+  color: #67736a;
+  font-size: 1rem;
+}
+
+.farmer-login-form {
+  gap: 18px;
+}
+
+.farmer-login-form label {
+  gap: 8px;
+  color: #17241d;
+  font-size: 0.96rem;
+  font-weight: 600;
+}
+
+.farmer-login-form input {
+  width: 100%;
+  min-height: 52px;
+  padding: 13px 15px;
+  border: 1px solid rgba(83, 104, 83, 0.17);
+  border-radius: 11px;
+  outline: none;
+  background: rgba(255, 255, 255, 0.95);
+  color: #1b2c22;
+  font: inherit;
+  font-size: 0.95rem;
+  transition: border-color 150ms ease, box-shadow 150ms ease, background 150ms ease;
+}
+
+.farmer-login-form input::placeholder {
+  color: #89938a;
+}
+
+.farmer-login-form input:hover {
+  border-color: rgba(31, 130, 73, 0.4);
+}
+
+.farmer-login-form input:focus {
+  border-color: #14cb60;
+  background: #fff;
+  box-shadow: 0 0 0 3px rgba(20, 203, 96, 0.19), 0 2px 10px rgba(20, 164, 75, 0.12);
+}
+
+.farmer-login-form .feedback {
+  margin-top: -5px;
+  border: 1px solid rgba(190, 56, 56, 0.12);
+}
+
+.farmer-login-form .auth-actions {
+  gap: 12px;
+  margin-top: 1px;
+}
+
+.farmer-login-form .btn {
+  min-height: 50px;
+  padding: 12px 20px;
+  border-radius: 11px;
+  font-size: 0.95rem;
+}
+
+.farmer-login-form .btn-primary {
+  min-width: 84px;
+  background: linear-gradient(135deg, #075b3b, #08744b);
+  box-shadow: 0 7px 15px rgba(7, 91, 59, 0.24);
+}
+
+.farmer-login-form .btn-primary:hover:not(:disabled) {
+  background: linear-gradient(135deg, #06492f, #096440);
+  box-shadow: 0 9px 19px rgba(7, 91, 59, 0.3);
+}
+
+.farmer-login-form .btn-secondary {
+  border-color: rgba(87, 104, 85, 0.14);
+  background: rgba(248, 249, 243, 0.88);
+  color: #25372a;
+}
+
+.farmer-login-form .btn-secondary:hover {
+  background: #fff;
+}
+
+@media (max-width: 760px) {
+  .login-topbar {
+    display: flex;
+    width: calc(100% - 24px);
+    min-height: 70px;
+    padding: 9px 14px;
+  }
+
+  .login-topbar .desktop-nav,
+  .login-topbar .guest-actions {
+    display: none;
+  }
+
+  .login-topbar .mobile-toggle {
+    display: inline-grid;
+  }
+
+  .login-topbar .brand-tag {
+    display: none;
+  }
+
+  .login-app-shell .mobile-drawer {
+    top: 70px;
+  }
+
+  .farmer-login-page {
+    padding: 116px 20px 24px;
+  }
+
+  .farmer-login-card {
+    transform: translateY(-14px);
+  }
+}
+
+@media (max-width: 520px) {
+  .login-topbar {
+    width: calc(100% - 20px);
+    padding: 8px 12px;
+    border-radius: 0 0 16px 16px;
+  }
+
+  .login-topbar .brand-badge {
+    width: 40px;
+    height: 40px;
+  }
+
+  .login-topbar .brand-name {
+    font-size: 1.15rem;
+  }
+
+  .farmer-login-page {
+    padding: 108px 15px 24px;
+  }
+
+  .farmer-login-card {
+    padding: 82px 20px 22px;
+    border-radius: 18px;
+  }
+
+  .farmer-login-header {
+    margin-bottom: 22px;
+  }
+
+  .farmer-login-header .brand-badge {
+    top: -116px;
+    width: 72px;
+    height: 72px;
+    border-radius: 23px;
+  }
+
+  .farmer-login-form {
+    gap: 16px;
+  }
+
+  .farmer-login-form .auth-actions {
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .farmer-login-form .btn {
+    width: 100%;
+  }
+}
+
+@media (max-height: 680px) and (min-width: 761px) {
+  .farmer-login-page {
+    padding-top: 92px;
+    padding-bottom: 12px;
+  }
+
+  .farmer-login-card {
+    padding-top: 78px;
+    transform: translateY(0);
+  }
+
+  .farmer-login-header .brand-badge {
+    top: -112px;
+    width: 68px;
+    height: 68px;
+    border-radius: 22px;
+  }
+}
+
+.home-app-shell {
+  position: relative;
+  min-height: 100vh;
+  min-height: 100svh;
+  overflow-x: clip;
+  isolation: isolate;
+  background:
+    linear-gradient(180deg, rgba(240, 245, 231, 0.12), rgba(233, 241, 222, 0.18)),
+    url('./assets/farm-landscape.svg') center center / cover fixed no-repeat;
+}
+
+.home-app-shell::before {
+  position: fixed;
+  z-index: -1;
+  inset: 0;
+  background:
+    radial-gradient(ellipse at 50% 34%, rgba(255, 255, 245, 0.52), transparent 48%),
+    linear-gradient(90deg, rgba(244, 242, 222, 0.12), transparent 48%, rgba(214, 232, 209, 0.14));
+  content: '';
+  pointer-events: none;
+}
+
+.home-topbar {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  width: min(1528px, calc(100% - clamp(28px, 5vw, 80px)));
+  max-width: 1528px;
+  min-height: 70px;
+  margin: 12px auto 0;
+  padding: 8px clamp(18px, 3vw, 42px);
+  border: 1px solid rgba(255, 255, 255, 0.76);
+  border-radius: 18px;
+  background: rgba(255, 255, 250, 0.77);
+  box-shadow: 0 9px 28px rgba(38, 70, 43, 0.09);
+  backdrop-filter: blur(18px);
+}
+
+.home-topbar .brand-logo-link {
+  color: #123f26;
+}
+
+.home-topbar .brand-badge {
+  width: 42px;
+  height: 42px;
+  border-radius: 13px;
+  background: linear-gradient(145deg, #17643b, #4b9461);
+  box-shadow: 0 7px 17px rgba(23, 100, 59, 0.2);
+}
+
+.home-topbar .brand-name {
+  font-family: Georgia, 'Times New Roman', serif;
+  font-size: 1.24rem;
+  letter-spacing: -0.04em;
+}
+
+.home-topbar .brand-tag {
+  margin-top: 1px;
+  font-size: 0.67rem;
+}
+
+.home-topbar .topnav {
+  justify-content: center;
+}
+
+.home-topbar .nav-link {
+  min-height: 34px;
+  padding: 7px 13px;
+  color: #4e6052;
+  font-weight: 600;
+}
+
+.home-topbar .nav-link.active,
+.home-topbar .nav-link:hover {
+  background: rgba(222, 235, 215, 0.8);
+  color: #123f26;
+}
+
+.home-topbar .user-actions {
+  justify-content: flex-end;
+}
+
+.home-topbar .guest-actions {
+  gap: 8px;
+}
+
+.home-topbar .guest-actions .btn {
+  min-height: 39px;
+  padding: 9px 15px;
+  border-radius: 10px;
+  font-size: 0.82rem;
+}
+
+.home-topbar .guest-actions .btn-primary {
+  background: linear-gradient(135deg, #123f26, #17643b);
+  box-shadow: 0 5px 12px rgba(18, 63, 38, 0.17);
+}
+
+.home-page {
+  position: relative;
+  z-index: 1;
+  width: min(100%, 1440px);
+  padding: clamp(22px, 3vw, 38px) clamp(18px, 4vw, 54px) 54px;
+}
+
+.home-page .hero {
+  min-height: 375px;
+  grid-template-columns: minmax(0, 1.4fr) minmax(245px, 0.72fr);
+  gap: clamp(26px, 5vw, 70px);
+  padding: clamp(30px, 4.2vw, 56px) clamp(25px, 5vw, 66px);
+  border-color: rgba(255, 255, 255, 0.78);
+  border-radius: 27px;
+  background:
+    radial-gradient(ellipse at 82% 24%, rgba(230, 238, 203, 0.38), transparent 20rem),
+    rgba(255, 255, 248, 0.73);
+  box-shadow:
+    0 22px 50px rgba(35, 67, 39, 0.14),
+    0 1px 0 rgba(255, 255, 255, 0.62) inset;
+  backdrop-filter: blur(17px);
+}
+
+.home-page .hero::before,
+.home-page .hero::after {
+  position: absolute;
+  width: 120px;
+  height: 120px;
+  border: 1px solid rgba(93, 132, 84, 0.12);
+  border-radius: 50%;
+  content: '';
+  pointer-events: none;
+}
+
+.home-page .hero::before {
+  top: -81px;
+  right: 15%;
+  box-shadow: 0 0 0 12px rgba(255, 255, 255, 0.08), 0 0 0 25px rgba(80, 126, 73, 0.04);
+}
+
+.home-page .hero::after {
+  right: -74px;
+  bottom: -82px;
+  width: 160px;
+  height: 160px;
+  border-color: rgba(93, 132, 84, 0.09);
+}
+
+.home-page .hero-copy {
+  position: relative;
+  z-index: 1;
+}
+
+.home-page .glow-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  margin: 0 0 19px;
+  padding: 8px 13px;
+  border-color: rgba(174, 143, 58, 0.22);
+  background: rgba(250, 248, 233, 0.88);
+  color: #526044;
+  font-size: 0.67rem;
+  letter-spacing: 0.11em;
+}
+
+.hero-badge-dot {
+  width: 7px;
+  height: 7px;
+  flex: 0 0 auto;
+  border-radius: 50%;
+  background: #c49b3b;
+  box-shadow: 0 0 0 3px rgba(196, 155, 59, 0.13);
+}
+
+.home-page .hero h1 {
+  display: flex;
+  flex-direction: column;
+  max-width: 680px;
+  margin: 0;
+  color: #123f26;
+  font-size: clamp(2.25rem, 4.1vw, 3.25rem);
+  font-weight: 760;
+  letter-spacing: -0.055em;
+  line-height: 1.08;
+}
+
+.home-page .hero p {
+  max-width: 620px;
+  margin: 17px 0 23px;
+  color: #45564a;
+  font-size: clamp(0.93rem, 1.25vw, 1.02rem);
+  line-height: 1.65;
+}
+
+.home-page .cta-row {
+  gap: 11px;
+}
+
+.home-page .cta-row .btn {
+  min-height: 46px;
+  padding: 12px 19px;
+  border-radius: 11px;
+  font-size: 0.9rem;
+}
+
+.home-page .cta-row .btn-primary {
+  background: linear-gradient(135deg, #123f26, #17643b);
+  box-shadow: 0 8px 17px rgba(18, 63, 38, 0.2);
+}
+
+.home-page .cta-row .btn-primary:hover {
+  box-shadow: 0 10px 21px rgba(18, 63, 38, 0.28);
+}
+
+.home-page .cta-row .btn-secondary {
+  border-color: rgba(70, 103, 72, 0.19);
+  background: rgba(255, 255, 251, 0.84);
+  color: #25412e;
+}
+
+.home-page .hero-panel {
+  z-index: 1;
+  gap: 13px;
+}
+
+.home-page .mini-card {
+  min-height: 66px;
+  padding: 12px 15px;
+  border-color: rgba(255, 255, 255, 0.9);
+  border-radius: 15px;
+  background: rgba(255, 255, 250, 0.7);
+  box-shadow: 0 8px 21px rgba(43, 72, 45, 0.08);
+  color: #244431;
+  font-size: 0.9rem;
+  backdrop-filter: blur(12px);
+}
+
+.feature-icon {
+  display: grid;
+  width: 38px;
+  height: 38px;
+  flex: 0 0 auto;
+  place-items: center;
+  border: 1px solid rgba(96, 139, 88, 0.1);
+  border-radius: 12px;
+  background: #e8f0e1;
+  color: #286844;
+}
+
+.home-page .role-grid {
+  gap: clamp(13px, 1.7vw, 22px);
+  margin-top: 22px;
+}
+
+.home-page .role-card {
+  min-height: 225px;
+  padding: 21px 20px 19px;
+  border-color: rgba(255, 255, 255, 0.82);
+  border-radius: 19px;
+  background: rgba(255, 255, 249, 0.76);
+  box-shadow: 0 12px 28px rgba(39, 68, 39, 0.1);
+  backdrop-filter: blur(14px);
+}
+
+.home-page .role-card:hover {
+  border-color: rgba(218, 233, 208, 0.96);
+  box-shadow: 0 17px 34px rgba(35, 67, 39, 0.16);
+}
+
+.home-page .role-icon {
+  width: 48px;
+  height: 48px;
+  border: 1px solid rgba(76, 125, 76, 0.1);
+  border-radius: 14px;
+  background: #e7efe0;
+  color: #23623e;
+}
+
+.home-page .role-icon svg {
+  width: 24px;
+  height: 24px;
+}
+
+.home-page .role-card h3 {
+  color: #173f29;
+  font-size: 1.16rem;
+}
+
+.home-page .role-card p {
+  color: #5a6a5c;
+  font-size: 0.86rem;
+  line-height: 1.55;
+}
+
+.home-page .role-link {
+  margin-top: 4px;
+  color: #17643b;
+  font-size: 0.85rem;
+}
+
+@media (max-width: 980px) {
+  .home-page .hero {
+    min-height: 0;
+    grid-template-columns: minmax(0, 1.2fr) minmax(220px, 0.8fr);
+    gap: 25px;
+  }
+
+  .home-page .hero h1 {
+    font-size: clamp(2rem, 4.6vw, 2.8rem);
+  }
+
+  .home-page .role-card {
+    min-height: 210px;
+  }
+}
+
+@media (max-width: 760px) {
+  .home-topbar {
+    display: flex;
+    width: calc(100% - 24px);
+    min-height: 68px;
+    margin-top: 10px;
+    padding: 8px 14px;
+  }
+
+  .home-topbar .desktop-nav,
+  .home-topbar .guest-actions {
+    display: none;
+  }
+
+  .home-topbar .mobile-toggle {
+    display: inline-grid;
+  }
+
+  .home-topbar .brand-tag {
+    display: block;
+    font-size: 0.64rem;
+  }
+
+  .home-app-shell .mobile-drawer {
+    top: 78px;
+  }
+
+  .home-page {
+    padding: 24px 18px 38px;
+  }
+
+  .home-page .hero {
+    grid-template-columns: 1fr;
+    gap: 21px;
+    padding: 30px 26px;
+  }
+
+  .home-page .hero-panel {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 10px;
+  }
+
+  .home-page .mini-card {
+    min-height: 88px;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+    padding: 12px;
+    font-size: 0.78rem;
+  }
+
+  .home-page .feature-icon {
+    width: 34px;
+    height: 34px;
+  }
+
+  .home-page .role-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 520px) {
+  .home-app-shell {
+    background-attachment: scroll;
+  }
+
+  .home-topbar {
+    width: calc(100% - 20px);
+    min-height: 64px;
+    padding: 7px 11px;
+    border-radius: 0 0 15px 15px;
+  }
+
+  .home-topbar .brand-badge {
+    width: 39px;
+    height: 39px;
+  }
+
+  .home-topbar .brand-name {
+    font-size: 1.12rem;
+  }
+
+  .home-topbar .brand-tag {
+    display: none;
+  }
+
+  .home-app-shell .mobile-drawer {
+    top: 74px;
+  }
+
+  .home-page {
+    padding: 18px 14px 30px;
+  }
+
+  .home-page .hero {
+    gap: 19px;
+    padding: 25px 20px;
+    border-radius: 21px;
+  }
+
+  .home-page .glow-pill {
+    gap: 8px;
+    margin-bottom: 16px;
+    padding: 7px 10px;
+    font-size: 0.59rem;
+    letter-spacing: 0.075em;
+  }
+
+  .home-page .hero h1 {
+    font-size: clamp(1.9rem, 8vw, 2.35rem);
+    line-height: 1.1;
+  }
+
+  .home-page .hero p {
+    margin: 14px 0 19px;
+    font-size: 0.9rem;
+  }
+
+  .home-page .cta-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .home-page .cta-row .btn {
+    min-height: 45px;
+    padding: 10px 12px;
+    font-size: 0.82rem;
+  }
+
+  .home-page .hero-panel {
+    grid-template-columns: 1fr;
+  }
+
+  .home-page .mini-card {
+    min-height: 55px;
+    flex-direction: row;
+    align-items: center;
+    gap: 11px;
+    padding: 9px 11px;
+    font-size: 0.83rem;
+  }
+
+  .home-page .role-grid {
+    grid-template-columns: 1fr;
+    gap: 12px;
+    margin-top: 15px;
+  }
+
+  .home-page .role-card {
+    min-height: 0;
+    padding: 18px;
+  }
+}
